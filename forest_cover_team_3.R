@@ -244,7 +244,7 @@ sum(colSums(-is.na(forest.cover.data[train,]))) #total missing observations
 summary(forest.cover.data[train,]) #invalid observations? (negatives, etc.)
 
 #  EDA for continuous variables
-for (i in colnames(forest.cover.data[train,1:2])) {
+for (i in colnames(forest.cover.data[train,1:10])) {
   par(mfrow=c(1,1))
   #scatter.smooth(forest.cover.data[train,i],col=rgb(0, 0, 1, 0.2),las=1,xlab="Observation",main=i)
   #print(i)
