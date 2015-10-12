@@ -1,5 +1,6 @@
 # see: https://archive.ics.uci.edu/ml/datasets/Covertype
 
+# Required packages ####
 require(lattice)
 require(latticeExtra)
 require(useful)
@@ -12,11 +13,15 @@ require(corrplot)
 require(caret)
 require(randomForest)
 
+# Data load and prep ####
+
 #Import data
-forest.cover.data <- read.table(file="C:/Users/RS/Documents/Northwestern - Predictive Analytics/454 - Advanced Modeling Techniques/Group Project/covtype_data.txt", header=TRUE, stringsAsFactors=F, sep=",")
+forest.cover.data.source <- choose.files()
+forest.cover.data <- read.table(forest.cover.data.source, header=TRUE, stringsAsFactors=F, sep=",")
 
 #forest.cover.data <- slice(forest.cover.data,1:100) # subset code for debugging
 
+#assign column names per data dictionary
 names(forest.cover.data) <- c("Elevation", "Aspect", "Slope", "Horizontal_Distance_To_Hydrology", "Vertical_Distance_To_Hydrology",
                               "Horizontal_Distance_To_Roadways", "Hillshade_9am", "Hillshade_Noon", "Hillshade_3pm", "Horizontal_Distance_To_Fire_Points",
                               "Rawah_WA", "Neota_WA", "Comanche_Peak_WA", "Cache_la_Poudre_WA", "Soil_Type_1",
@@ -29,11 +34,10 @@ names(forest.cover.data) <- c("Elevation", "Aspect", "Slope", "Horizontal_Distan
                               "Soil_Type_32", "Soil_Type_33", "Soil_Type_34", "Soil_Type_35", "Soil_Type_36",
                               "Soil_Type_37", "Soil_Type_38", "Soil_Type_39", "Soil_Type_40", "Cover_Type")
 
+# Convert response variable Cover_Type as a factor
 forest.cover.data$Cover_Type_Factor <- factor(forest.cover.data$Cover_Type,levels=c(1,2,3,4,5,6,7),labels=c("Spruce_Fir","Logdepole_Pine","Ponderosa_Pine","Cottonwood_Willow","Aspen","Douglas-fir","Krummholz"))
 
-
-
-# Createvariables for Cover_TYpe
+# Create dummy variables for Cover_Type
 forest.cover.data$Cover_Type_1 <- ifelse((forest.cover.data$Cover_Type==1),1,0)
 forest.cover.data$Cover_Type_2 <- ifelse((forest.cover.data$Cover_Type==2),1,0)
 forest.cover.data$Cover_Type_3 <- ifelse((forest.cover.data$Cover_Type==3),1,0)
@@ -41,22 +45,17 @@ forest.cover.data$Cover_Type_4 <- ifelse((forest.cover.data$Cover_Type==4),1,0)
 forest.cover.data$Cover_Type_5 <- ifelse((forest.cover.data$Cover_Type==5),1,0)
 forest.cover.data$Cover_Type_6 <- ifelse((forest.cover.data$Cover_Type==6),1,0) #leave one out for indicator variable (7 total)
 
+# Create single factor for wilderness_area
+forest.cover.data$wilderness_area <- factor(as.matrix(forest.cover.data[,11:14])%*%1:4, labels = colnames(forest.cover.data[11:14]))
 
-# Create variables for wilderness_area
-forest.cover.data$wilderness_area <- ifelse((forest.cover.data$Rawah_WA==1),1,
-                                            ifelse((forest.cover.data$Neota_WA==1),2,
-                                                   ifelse((forest.cover.data$Comanche_Peak_WA==1),3,
-                                                          ifelse((forest.cover.data$Cache_la_Poudre_WA==1),4,0))))
-
-forest.cover.data$wilderness_area <- factor(forest.cover.data$wilderness_area,levels=c(1,2,3,4,0),labels=c("Rawah","Neota","Comanche_Peak","Cache_la_Poudre","missing"))
-
+# Create dummy variables for wilderness_area
 forest.cover.data$Wilderness_area_1 <- ifelse((forest.cover.data$wilderness_area==1),1,0)
 forest.cover.data$Wilderness_area_2 <- ifelse((forest.cover.data$wilderness_area==2),1,0)
 forest.cover.data$Wilderness_area_3 <- ifelse((forest.cover.data$wilderness_area==3),1,0)
 forest.cover.data$Wilderness_area_4 <- ifelse((forest.cover.data$wilderness_area==4),1,0) #leave one out for indicator variable (5 total = 4 names + 1 "missing)
 
 # Create variables for climate_zone
-forest.cover.data$climate_zone <- ifelse((forest.cover.data$Soil_Type_1==1),2,
+forest.cover.data$climate_zone9 <- ifelse((forest.cover.data$Soil_Type_1==1),2,
                                          ifelse((forest.cover.data$Soil_Type_2==1),2,
                                                 ifelse((forest.cover.data$Soil_Type_3==1),2,
                                                        ifelse((forest.cover.data$Soil_Type_4==1),2,
@@ -212,7 +211,7 @@ forest.cover.data$Soil_Type<-factor(forest.cover.data$Soil_Type,levels=c(1,2,3,4
 #                                                   Soil_Type_31,Soil_Type_32,Soil_Type_33,Soil_Type_34,Soil_Type_35,Soil_Type_36,
 #                                                   Soil_Type_37,Soil_Type_38,Soil_Type_39,Soil_Type_40)) #remove variables that have been converted into factors
 
-
+# Train/Test Split ####
 # if necessary due to computational limitations
 # sample the training data set to perform EDA
 #  dataset = 581,011 observations. the following script takes several hours to run on the full dataset. 
@@ -220,12 +219,11 @@ forest.cover.data$Soil_Type<-factor(forest.cover.data$Soil_Type,levels=c(1,2,3,4
 # See: http://www.raosoft.com/samplesize.html
 #forest.cover.data <- forest.cover.data[sample(nrow(forest.cover.data), 16127, replace = FALSE, prob = NULL),]
 
-
 # split data into training set and test set
 set.seed(465)
 train=(sample(1:nrow(forest.cover.data),nrow(forest.cover.data)*0.03))
 
-# #remove training set variables where all observations have same value. (note: necessary when indicator variables are used?)
+#remove training set variables where all observations have same value. (note: necessary when indicator variables are used?)
 for (i in colnames(forest.cover.data[train,])) {
   ifelse(n_distinct(forest.cover.data[train,i])==1,forest.cover.data <- subset(forest.cover.data, select = -c(get(i))),forest.cover.data[train,] <- (forest.cover.data[train,]))
 }
@@ -239,7 +237,7 @@ str(forest.cover.data[train,])
 colSums(-is.na(forest.cover.data[train,])) #missing observations?
 sum(colSums(-is.na(forest.cover.data[train,]))) #total missing observations
 
-## BEGIN UNIVARIATE EDA
+## BEGIN UNIVARIATE EDA ####
 
 summary(forest.cover.data[train,]) #invalid observations? (negatives, etc.)
 
@@ -277,7 +275,7 @@ for (i in colnames(forest.cover.data[sapply(forest.cover.data[train,],(is.factor
 
 
 
-## BEGIN MULTIVARIATE EDA
+## BEGIN MULTIVARIATE EDA  ####
 
 # Create data subset with no factor variables. (e.g present qualitative variables 
 # as indicator variables instead of factor variables
@@ -285,7 +283,7 @@ forest.cover.data1 <- select(forest.cover.data, -c(Cover_Type_Factor,
                                                    wilderness_area, climate_zone, geologic_zone, 
                                                    Soil_Type))
 
-# correlation matrix plot
+# correlation matrix plot ####
 z <- cor(forest.cover.data1[train,])
 corrplot(z)
 levelplot(z,col.regions = gray(0:100/100),scales=list(x=list(rot=45)))
@@ -299,7 +297,7 @@ chart.Correlation(z)
 #print(a+as.layer(b))
 
 
-## PCA ANALYSIS
+## PCA analysis ####
 # #remove training set variables where all observations have same value. (note: necessary when indicator variables are used?)
 for (i in colnames(forest.cover.data1[train,])) {
   ifelse(n_distinct(forest.cover.data1[train,i])==1,forest.cover.data1 <- subset(forest.cover.data1[train,], select = -c(get(i))),forest.cover.data1[train,] <- (forest.cover.data1[train,]))
@@ -333,7 +331,7 @@ princomps(forest.cover.data1[train,])
 par(mfrow=c(1,1))
 
 
-## CLUSTER ANALYSIS
+## Cluster Analysis ####
 # 
 # # Cluster analysis - Hartigan's Rule (R for everyone 342)
 # cluster_best<- FitKMeans(forest.cover.data1[train,],max.clusters=15,nstart=25,seed=465)
