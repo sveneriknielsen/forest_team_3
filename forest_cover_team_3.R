@@ -102,14 +102,14 @@ forest.cover.data$climate_zone <- ifelse((forest.cover.data$Soil_Type_1==1),2,
                                                                                                                                                                                                                                                                                                                    ifelse((forest.cover.data$Soil_Type_40==1),8,0))))))))))))))))))))))))))))))))))))))))
 
 
-forest.cover.data$climate_zone <- factor(forest.cover.data$climate_zone,levels=c(2,3,4,5,6,7,8,0),labels=c("lower_mountain", "mountain_dry", "mountain", "montain_dry_and_mountain", "mountain_and_subalpine", "subalpine","alpine","missing"))               
+forest.cover.data$climate_zone <- factor(forest.cover.data$climate_zone,levels=c(2,3,4,5,6,7,8),labels=c("lower_mountain", "mountain_dry", "mountain", "montain_dry_and_mountain", "mountain_and_subalpine", "subalpine","alpine"))               
 
 climate.dummy.vars <- model.matrix(~climate_zone, data = forest.cover.data)[,-1]
 colnames(climate.dummy.vars) <- gsub("climate_zone","",colnames(climate.dummy.vars))
 forest.cover.data <- cbind(forest.cover.data,climate.dummy.vars)
 rm(climate.dummy.vars)
 
-# create variables for geologic zone
+# create variables for geologic zone ####
 forest.cover.data$geologic_zone <- ifelse((forest.cover.data$Soil_Type_1==1),2,
                                           ifelse((forest.cover.data$Soil_Type_2==1),7,
                                                  ifelse((forest.cover.data$Soil_Type_3==1),7,
@@ -151,7 +151,7 @@ forest.cover.data$geologic_zone <- ifelse((forest.cover.data$Soil_Type_1==1),2,
                                                                                                                                                                                                                                                                                                              ifelse((forest.cover.data$Soil_Type_39==1),7,
                                                                                                                                                                                                                                                                                                                     ifelse((forest.cover.data$Soil_Type_40==1),7,0))))))))))))))))))))))))))))))))))))))))
 #Create factor for geologic_zone
-forest.cover.data$geologic_zone <- factor(forest.cover.data$geologic_zone,levels=c(1,2,5,7,0),labels=c("alluvium", "glacial", "mixed_sedimentary", "igneous_and_metamorphic", "missing")) 
+forest.cover.data$geologic_zone <- factor(forest.cover.data$geologic_zone,levels=c(1,2,5,7),labels=c("alluvium", "glacial", "mixed_sedimentary", "igneous_and_metamorphic")) 
 
 #Create dummy variables for geologic_zone
 geologic.dummy.vars <- model.matrix(~geologic_zone, data = forest.cover.data)[,-1]
@@ -159,56 +159,21 @@ colnames(geologic.dummy.vars) <- gsub("geologic_zone","",colnames(geologic.dummy
 forest.cover.data <- cbind(forest.cover.data,geologic.dummy.vars)
 rm(geologic.dummy.vars)
 
-forest.cover.data$Soil_Type <- ifelse((forest.cover.data$Soil_Type_1==1),1,
-                                      ifelse((forest.cover.data$Soil_Type_2==1),2,
-                                             ifelse((forest.cover.data$Soil_Type_3==1),3,
-                                                    ifelse((forest.cover.data$Soil_Type_4==1),4,
-                                                           ifelse((forest.cover.data$Soil_Type_5==1),5,
-                                                                  ifelse((forest.cover.data$Soil_Type_6==1),6,
-                                                                         ifelse((forest.cover.data$Soil_Type_7==1),7,
-                                                                                ifelse((forest.cover.data$Soil_Type_8==1),8,
-                                                                                       ifelse((forest.cover.data$Soil_Type_9==1),9,
-                                                                                              ifelse((forest.cover.data$Soil_Type_10==1),10,
-                                                                                                     ifelse((forest.cover.data$Soil_Type_11==1),11,
-                                                                                                            ifelse((forest.cover.data$Soil_Type_12==1),12,
-                                                                                                                   ifelse((forest.cover.data$Soil_Type_13==1),13,
-                                                                                                                          ifelse((forest.cover.data$Soil_Type_14==1),14,
-                                                                                                                                 ifelse((forest.cover.data$Soil_Type_15==1),15,
-                                                                                                                                        ifelse((forest.cover.data$Soil_Type_16==1),16,
-                                                                                                                                               ifelse((forest.cover.data$Soil_Type_17==1),17,
-                                                                                                                                                      ifelse((forest.cover.data$Soil_Type_18==1),18,
-                                                                                                                                                             ifelse((forest.cover.data$Soil_Type_19==1),19,
-                                                                                                                                                                    ifelse((forest.cover.data$Soil_Type_20==1),20,
-                                                                                                                                                                           ifelse((forest.cover.data$Soil_Type_21==1),21,
-                                                                                                                                                                                  ifelse((forest.cover.data$Soil_Type_22==1),22,
-                                                                                                                                                                                         ifelse((forest.cover.data$Soil_Type_23==1),23,
-                                                                                                                                                                                                ifelse((forest.cover.data$Soil_Type_24==1),24,
-                                                                                                                                                                                                       ifelse((forest.cover.data$Soil_Type_25==1),25,
-                                                                                                                                                                                                              ifelse((forest.cover.data$Soil_Type_26==1),26,
-                                                                                                                                                                                                                     ifelse((forest.cover.data$Soil_Type_27==1),27,
-                                                                                                                                                                                                                            ifelse((forest.cover.data$Soil_Type_28==1),28,
-                                                                                                                                                                                                                                   ifelse((forest.cover.data$Soil_Type_29==1),29,
-                                                                                                                                                                                                                                          ifelse((forest.cover.data$Soil_Type_30==1),30,
-                                                                                                                                                                                                                                                 ifelse((forest.cover.data$Soil_Type_31==1),31,
-                                                                                                                                                                                                                                                        ifelse((forest.cover.data$Soil_Type_32==1),32,
-                                                                                                                                                                                                                                                               ifelse((forest.cover.data$Soil_Type_33==1),33,
-                                                                                                                                                                                                                                                                      ifelse((forest.cover.data$Soil_Type_34==1),34,
-                                                                                                                                                                                                                                                                             ifelse((forest.cover.data$Soil_Type_35==1),35,
-                                                                                                                                                                                                                                                                                    ifelse((forest.cover.data$Soil_Type_36==1),36,
-                                                                                                                                                                                                                                                                                           ifelse((forest.cover.data$Soil_Type_37==1),37,
-                                                                                                                                                                                                                                                                                                  ifelse((forest.cover.data$Soil_Type_38==1),38,
-                                                                                                                                                                                                                                                                                                         ifelse((forest.cover.data$Soil_Type_39==1),39,
-                                                                                                                                                                                                                                                                                                                ifelse((forest.cover.data$Soil_Type_40==1),40,0))))))))))))))))))))))))))))))))))))))))
+# Collapse Soil_Type to factor ####
+forest.cover.data$Soil_Type <- factor(as.matrix(forest.cover.data[,11:50])%*%1:length(11:50), labels = colnames(forest.cover.data[11:50]))
 
-forest.cover.data$Soil_Type<-factor(forest.cover.data$Soil_Type,levels=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,0),labels=c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","missing")) # convert to factor
+soil.type.dummy.vars <- model.matrix(~Soil_Type, data = forest.cover.data)[,-1]
+colnames(soil.type.dummy.vars) <- gsub("TypeSoil_Type_","Type",colnames(soil.type.dummy.vars))
+forest.cover.data <- cbind(forest.cover.data,soil.type.dummy.vars)
+rm(soil.type.dummy.vars)
 
-# forest.cover.data <- select(forest.cover.data, -c(Soil_Type_1,Soil_Type_2,Soil_Type_3,Soil_Type_4,Soil_Type_5,Soil_Type_6,
-#                                                   Soil_Type_7,Soil_Type_8,Soil_Type_9,Soil_Type_10,Soil_Type_11,Soil_Type_12,
-#                                                   Soil_Type_13,Soil_Type_14,Soil_Type_15,Soil_Type_16,Soil_Type_17,Soil_Type_18,
-#                                                   Soil_Type_19,Soil_Type_20,Soil_Type_21,Soil_Type_22,Soil_Type_23,Soil_Type_24,
-#                                                   Soil_Type_25,Soil_Type_26,Soil_Type_27,Soil_Type_28,Soil_Type_29,Soil_Type_30,
-#                                                   Soil_Type_31,Soil_Type_32,Soil_Type_33,Soil_Type_34,Soil_Type_35,Soil_Type_36,
-#                                                   Soil_Type_37,Soil_Type_38,Soil_Type_39,Soil_Type_40)) #remove variables that have been converted into factors
+forest.cover.data <- select(forest.cover.data, -c(Soil_Type_1,Soil_Type_2,Soil_Type_3,Soil_Type_4,Soil_Type_5,Soil_Type_6,
+                                                  Soil_Type_7,Soil_Type_8,Soil_Type_9,Soil_Type_10,Soil_Type_11,Soil_Type_12,
+                                                  Soil_Type_13,Soil_Type_14,Soil_Type_15,Soil_Type_16,Soil_Type_17,Soil_Type_18,
+                                                  Soil_Type_19,Soil_Type_20,Soil_Type_21,Soil_Type_22,Soil_Type_23,Soil_Type_24,
+                                                  Soil_Type_25,Soil_Type_26,Soil_Type_27,Soil_Type_28,Soil_Type_29,Soil_Type_30,
+                                                  Soil_Type_31,Soil_Type_32,Soil_Type_33,Soil_Type_34,Soil_Type_35,Soil_Type_36,
+                                                  Soil_Type_37,Soil_Type_38,Soil_Type_39,Soil_Type_40)) #remove variables that have been converted into factors
 
 # Train/Test Split ####
 # if necessary due to computational limitations
