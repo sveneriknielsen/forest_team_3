@@ -35,10 +35,12 @@ names(forest.cover.data) <- c("Elevation", "Aspect", "Slope", "Horizontal_Distan
                               "Soil_Type_37", "Soil_Type_38", "Soil_Type_39", "Soil_Type_40", "Cover_Type")
 
 # Convert response variable Cover_Type as a factor
-forest.cover.data$Cover_Type_Factor <- factor(forest.cover.data$Cover_Type,levels=c(1,2,3,4,5,6,7),labels=c("Spruce_Fir","Logdepole_Pine","Ponderosa_Pine","Cottonwood_Willow","Aspen","Douglas-fir","Krummholz"))
+forest.cover.data$Cover_Type_Factor <- factor(forest.cover.data$Cover_Type,levels=c(1,2,3,4,5,6,7),labels=c("Spruce_Fir","Lodgepole_Pine","Ponderosa_Pine","Cottonwood_Willow","Aspen","Douglas-fir","Krummholz"))
 
 
 # Create dummy variables for Cover_Type
+# Note that we may want to just call model.matrix() directly as needed by modeling functions
+# Extract cover_type dummy vars from Cover_Type factor
 cover.dummy.vars <- model.matrix(~Cover_Type_Factor, data = forest.cover.data)[,-1]
 colnames(cover.dummy.vars) <- gsub("Factor","",colnames(cover.dummy.vars))
 forest.cover.data <- cbind(forest.cover.data,cover.dummy.vars)
@@ -48,13 +50,17 @@ rm(cover.dummy.vars)
 forest.cover.data$wilderness_area <- factor(as.matrix(forest.cover.data[,11:14])%*%1:4, labels = colnames(forest.cover.data[11:14]))
 
 # Create dummy variables for wilderness_area
-forest.cover.data$Wilderness_area_1 <- ifelse((forest.cover.data$wilderness_area==1),1,0)
-forest.cover.data$Wilderness_area_2 <- ifelse((forest.cover.data$wilderness_area==2),1,0)
-forest.cover.data$Wilderness_area_3 <- ifelse((forest.cover.data$wilderness_area==3),1,0)
-forest.cover.data$Wilderness_area_4 <- ifelse((forest.cover.data$wilderness_area==4),1,0) #leave one out for indicator variable (5 total = 4 names + 1 "missing)
+WA.dummy.vars <- model.matrix(~wilderness_area, data = forest.cover.data)[,-1]
+colnames(WA.dummy.vars) <- gsub("Wilderness_area","",colnames(WA.dummy.vars))
+forest.cover.data <- cbind(forest.cover.data,WA.dummy.vars)
+rm(WA.dummy.vars)
+
+# remove variables that have been converted into factors (wilderness areas & cover type)
+forest.cover.data <- select(forest.cover.data, -c(Rawah_WA,Neota_WA,Comanche_Peak_WA,Cache_la_Poudre_WA,Cover_Type)) 
+
 
 # Create variables for climate_zone.  See for detail: https://archive.ics.uci.edu/ml/machine-learning-databases/covtype/covtype.info ####
-forest.cover.data$climate_zone9 <- ifelse((forest.cover.data$Soil_Type_1==1),2,
+forest.cover.data$climate_zone <- ifelse((forest.cover.data$Soil_Type_1==1),2,
                                          ifelse((forest.cover.data$Soil_Type_2==1),2,
                                                 ifelse((forest.cover.data$Soil_Type_3==1),2,
                                                        ifelse((forest.cover.data$Soil_Type_4==1),2,
@@ -98,13 +104,10 @@ forest.cover.data$climate_zone9 <- ifelse((forest.cover.data$Soil_Type_1==1),2,
 
 forest.cover.data$climate_zone <- factor(forest.cover.data$climate_zone,levels=c(2,3,4,5,6,7,8,0),labels=c("lower_mountain", "mountain_dry", "mountain", "montain_dry_and_mountain", "mountain_and_subalpine", "subalpine","alpine","missing"))               
 
-forest.cover.data$climate_zone_1 <- ifelse((forest.cover.data$climate_zone==1),1,0)
-forest.cover.data$climate_zone_2 <- ifelse((forest.cover.data$climate_zone==2),1,0)
-forest.cover.data$climate_zone_3 <- ifelse((forest.cover.data$climate_zone==3),1,0)
-forest.cover.data$climate_zone_4 <- ifelse((forest.cover.data$climate_zone==4),1,0)
-forest.cover.data$climate_zone_5 <- ifelse((forest.cover.data$climate_zone==5),1,0)
-forest.cover.data$climate_zone_6 <- ifelse((forest.cover.data$climate_zone==6),1,0)
-forest.cover.data$climate_zone_7 <- ifelse((forest.cover.data$climate_zone==7),1,0) #leave one out for indicator variable (7 variables + 1 "Missing")
+climate.dummy.vars <- model.matrix(~climate_zone, data = forest.cover.data)[,-1]
+colnames(climate.dummy.vars) <- gsub("climate_zone","",colnames(climate.dummy.vars))
+forest.cover.data <- cbind(forest.cover.data,climate.dummy.vars)
+rm(climate.dummy.vars)
 
 # create variables for geologic zone
 forest.cover.data$geologic_zone <- ifelse((forest.cover.data$Soil_Type_1==1),2,
@@ -147,18 +150,14 @@ forest.cover.data$geologic_zone <- ifelse((forest.cover.data$Soil_Type_1==1),2,
                                                                                                                                                                                                                                                                                                       ifelse((forest.cover.data$Soil_Type_38==1),7,
                                                                                                                                                                                                                                                                                                              ifelse((forest.cover.data$Soil_Type_39==1),7,
                                                                                                                                                                                                                                                                                                                     ifelse((forest.cover.data$Soil_Type_40==1),7,0))))))))))))))))))))))))))))))))))))))))
-
-forest.cover.data$geologic_zone_1 <- ifelse((forest.cover.data$geologic_zone==1),1,0)
-forest.cover.data$geologic_zone_2 <- ifelse((forest.cover.data$geologic_zone==2),1,0)
-forest.cover.data$geologic_zone_3 <- ifelse((forest.cover.data$geologic_zone==3),1,0)
-forest.cover.data$geologic_zone_4 <- ifelse((forest.cover.data$geologic_zone==4),1,0) #leave one out for indicator variable (4 variables + 1 "missing")
-
-# remove non-factor Cover_Type variables ####
-forest.cover.data <- select(forest.cover.data, -c(Cover_Type, Cover_Type_1, Cover_Type_2, Cover_Type_3, Cover_Type_4, Cover_Type_5, Cover_Type_6))
+#Create factor for geologic_zone
 forest.cover.data$geologic_zone <- factor(forest.cover.data$geologic_zone,levels=c(1,2,5,7,0),labels=c("alluvium", "glacial", "mixed_sedimentary", "igneous_and_metamorphic", "missing")) 
 
-## remove variables that have been converted into factors
-#forest.cover.data <- select(forest.cover.data, -c(Rawah_WA,Neota_WA,Comanche_Peak_WA,Cache_la_Poudre_WA)) 
+#Create dummy variables for geologic_zone
+geologic.dummy.vars <- model.matrix(~geologic_zone, data = forest.cover.data)[,-1]
+colnames(geologic.dummy.vars) <- gsub("geologic_zone","",colnames(geologic.dummy.vars))
+forest.cover.data <- cbind(forest.cover.data,geologic.dummy.vars)
+rm(geologic.dummy.vars)
 
 forest.cover.data$Soil_Type <- ifelse((forest.cover.data$Soil_Type_1==1),1,
                                       ifelse((forest.cover.data$Soil_Type_2==1),2,
