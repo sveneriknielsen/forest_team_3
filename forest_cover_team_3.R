@@ -1,6 +1,7 @@
 # see: https://archive.ics.uci.edu/ml/datasets/Covertype
 
-# Required packages ####
+# Required packages
+#####
 require(lattice)
 require(latticeExtra)
 require(useful)
@@ -13,7 +14,9 @@ require(corrplot)
 require(caret)
 require(randomForest)
 
-# Data load and prep ####
+#####
+# Data load and ETL
+#####
 
 #Import data
 forest.cover.data.source <- choose.files()
@@ -59,7 +62,7 @@ rm(WA.dummy.vars)
 forest.cover.data <- select(forest.cover.data, -c(Rawah_WA,Neota_WA,Comanche_Peak_WA,Cache_la_Poudre_WA,Cover_Type)) 
 
 
-# Create variables for climate_zone.  See for detail: https://archive.ics.uci.edu/ml/machine-learning-databases/covtype/covtype.info ####
+# Create variables for climate_zone.  See for detail: https://archive.ics.uci.edu/ml/machine-learning-databases/covtype/covtype.info
 forest.cover.data$climate_zone <- ifelse((forest.cover.data$Soil_Type_1==1),2,
                                          ifelse((forest.cover.data$Soil_Type_2==1),2,
                                                 ifelse((forest.cover.data$Soil_Type_3==1),2,
@@ -109,7 +112,7 @@ colnames(climate.dummy.vars) <- gsub("climate_zone","",colnames(climate.dummy.va
 forest.cover.data <- cbind(forest.cover.data,climate.dummy.vars)
 rm(climate.dummy.vars)
 
-# create variables for geologic zone ####
+# create variables for geologic zone
 forest.cover.data$geologic_zone <- ifelse((forest.cover.data$Soil_Type_1==1),2,
                                           ifelse((forest.cover.data$Soil_Type_2==1),7,
                                                  ifelse((forest.cover.data$Soil_Type_3==1),7,
@@ -159,7 +162,7 @@ colnames(geologic.dummy.vars) <- gsub("geologic_zone","",colnames(geologic.dummy
 forest.cover.data <- cbind(forest.cover.data,geologic.dummy.vars)
 rm(geologic.dummy.vars)
 
-# Collapse Soil_Type to factor ####
+# Collapse Soil_Type to factor
 forest.cover.data$Soil_Type <- factor(as.matrix(forest.cover.data[,15:54])%*%1:length(15:54), labels = colnames(forest.cover.data[15:54]))
 
 soil.type.dummy.vars <- model.matrix(~Soil_Type, data = forest.cover.data)[,-1]
@@ -174,8 +177,9 @@ forest.cover.data <- select(forest.cover.data, -c(Soil_Type_1,Soil_Type_2,Soil_T
                                                   Soil_Type_25,Soil_Type_26,Soil_Type_27,Soil_Type_28,Soil_Type_29,Soil_Type_30,
                                                   Soil_Type_31,Soil_Type_32,Soil_Type_33,Soil_Type_34,Soil_Type_35,Soil_Type_36,
                                                   Soil_Type_37,Soil_Type_38,Soil_Type_39,Soil_Type_40)) #remove variables that have been converted into factors
-
-# Train/Test Split ####
+#####
+# Train/Test Split
+#####
 # if necessary due to computational limitations
 # sample the training data set to perform EDA
 #  dataset = 581,011 observations. the following script takes several hours to run on the full dataset. 
@@ -211,8 +215,9 @@ sum(colSums(-is.na(forest.cover.data[train,]))) #total missing observations
 #                          ifelse((forest.cover.data[,i]  < outlier_low), outlier_low, forest.cover.data[,i]))
 # }
 
-## BEGIN UNIVARIATE EDA ####
-
+#####
+#  UNIVARIATE EDA 
+#####
 summary(forest.cover.data[train,]) #invalid observations? (negatives, etc.)
 
 #  EDA for continuous variables
@@ -247,17 +252,16 @@ for (i in colnames(forest.cover.data[sapply(forest.cover.data[train,],(is.factor
     print(ggplot(forest.cover.data[train,], aes(x=get(i),y=get(j))) + geom_point(aes(color=Cover_Type_Factor)) + labs(x=i,y=j))
   }} # this loop is overkill, but it provides a complete picture. 
 
-
-
-## BEGIN MULTIVARIATE EDA  ####
-
+#####
+# MULTIVARIATE EDA  
+#####
 # Create data subset with no factor variables. (e.g present qualitative variables 
 # as indicator variables instead of factor variables
 forest.cover.data1 <- select(forest.cover.data, -c(Cover_Type_Factor, 
                                                    wilderness_area, climate_zone, geologic_zone, 
                                                    Soil_Type))
 
-# correlation matrix plot ####
+# correlation matrix plot
 z <- cor(forest.cover.data1[train,])
 corrplot(z)
 levelplot(z,col.regions = gray(0:100/100),scales=list(x=list(rot=45)))
@@ -270,8 +274,9 @@ chart.Correlation(z)
 #            data = forest.cover.data[train,], main="Cover_Type")
 #print(a+as.layer(b))
 
-
-## PCA analysis ####
+#####
+# PCA analysis
+#####
 # #remove training set variables where all observations have same value. (note: necessary when indicator variables are used?)
 for (i in colnames(forest.cover.data1[train,])) {
   ifelse(n_distinct(forest.cover.data1[train,i])==1,forest.cover.data1 <- subset(forest.cover.data1[train,], select = -c(get(i))),forest.cover.data1[train,] <- (forest.cover.data1[train,]))
@@ -304,9 +309,9 @@ par(mfrow=c(1,2))
 princomps(forest.cover.data1[train,])
 par(mfrow=c(1,1))
 
-
-## Cluster Analysis ####
-# 
+#####
+# Cluster Analysis
+##### 
 # # Cluster analysis - Hartigan's Rule (R for everyone 342)
 # cluster_best<- FitKMeans(forest.cover.data1[train,],max.clusters=15,nstart=25,seed=465)
 # PlotHartigan(cluster_best)
@@ -355,8 +360,9 @@ par(mfrow=c(1,1))
 # dd=as.dist(1-cor(t(forest.cover.data1[train,])))
 # plot(hclust(dd, method="complete"), main="Complete Linkage with Correlation-Based Distance", xlab="", sub="")
 # 
-
-# ## VARIABLE ENGINEERING 
+#####
+# VARIABLE ENGINEERING 
+#####
 # 
 # # Center training and test data. 
 # # Training and test observations are updated, but only training data is used for calculating mean.
@@ -381,9 +387,9 @@ par(mfrow=c(1,1))
 #   forest.cover.data[paste0("poly3_",i)] <- I(forest.cover.data[,i]^3)
 # }
 
-
-## DECISION TREE 
-
+#####
+## MODEL FITTING - DECISION TREE 
+#####
 # Basic decision tree (ISLR p. 326)
 
 #subset data for decision tree fitting
@@ -427,7 +433,9 @@ b <- forest.cover.data1[-train,"Cover_Type_Factor"]
 xtab<-table(a,b)
 confusionMatrix(xtab) # decision tree test data confusion matrix - cross validated & pruned
 
-## RANDOM FOREST
+#####
+# MODEL FITTING - RANDOM FOREST
+#####
 
 # fit random forest on training data
 rf.forest.cover=randomForest(Cover_Type_Factor~.,forest.cover.data1[train,],
