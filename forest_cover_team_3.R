@@ -201,6 +201,16 @@ str(forest.cover.data[train,])
 colSums(-is.na(forest.cover.data[train,])) #missing observations?
 sum(colSums(-is.na(forest.cover.data[train,]))) #total missing observations
 
+# trim - outlier definition based on training data. Outlier trimming applied to training & test data.
+# for (i in colnames(forest.cover.data[sapply(forest.cover.data,(is.numeric))])) { 
+#   sd <- (sd(forest.cover.data[train,i])) # standard deviation 
+#   mean <- (mean(forest.cover.data[train,i])) # standard deviation
+#   outlier_high <- mean + 4*sd
+#   outlier_low <- mean - 4*sd
+#   forest.cover.data[,i] <- ifelse((forest.cover.data[,i] > outlier_high), outlier_high,
+#                          ifelse((forest.cover.data[,i]  < outlier_low), outlier_low, forest.cover.data[,i]))
+# }
+
 ## BEGIN UNIVARIATE EDA ####
 
 summary(forest.cover.data[train,]) #invalid observations? (negatives, etc.)
@@ -345,6 +355,32 @@ par(mfrow=c(1,1))
 # dd=as.dist(1-cor(t(forest.cover.data1[train,])))
 # plot(hclust(dd, method="complete"), main="Complete Linkage with Correlation-Based Distance", xlab="", sub="")
 # 
+
+# ## VARIABLE ENGINEERING 
+# 
+# # Center training and test data. 
+# # Training and test observations are updated, but only training data is used for calculating mean.
+# # Only quantitative variables are centered. Factor variables cannot be centered. Binary variables has mixed opinions.
+# for (i in colnames(forest.cover.data[,1:10])){
+#   forest.cover.data[,i] <- (mean(forest.cover.data[train,i]) - forest.cover.data[,i])
+# }
+# 
+# # construct interaction variables (x*y) for all variable pairs. 
+# # Note: What to do if variable value = 0?  set value to 0.0001 so zero term does not cancel other variable (X*0 = 0)
+# var_names <- colnames(select(forest.cover.data,-Cover_Type_Factor,-wilderness_area,-climate_zone,-Soil_Type,-geologic_zone)) # create a list of all variables excluding factor variables
+# var_names <- combn(var_names,m=2) # combinations of all variable pairs
+# var_names <- t(var_names) # transpose from wide to long data
+# #run loop through all variable pair combinations (redundancies removed (x*x) and no repeats (x*y, y*x))
+# for (a in row(var_names)) {
+#   forest.cover.data[paste0("inter_",var_names[a,1],"_",var_names[a,2])] <- I(forest.cover.data[,paste(var_names[a,1])] * forest.cover.data[,paste(var_names[a,2])])
+# } 
+# 
+# # construct 2nd & 3rd degree polynomial variables from the 10 quantitative variables.
+# for (i in colnames(forest.cover.data[train,1:10])){
+#   forest.cover.data[paste0("poly2_",i)] <- I(forest.cover.data[,i]^2)
+#   forest.cover.data[paste0("poly3_",i)] <- I(forest.cover.data[,i]^3)
+# }
+
 
 ## DECISION TREE 
 
