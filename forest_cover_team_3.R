@@ -160,7 +160,7 @@ forest.cover.data <- cbind(forest.cover.data,geologic.dummy.vars)
 rm(geologic.dummy.vars)
 
 # Collapse Soil_Type to factor ####
-forest.cover.data$Soil_Type <- factor(as.matrix(forest.cover.data[,11:50])%*%1:length(11:50), labels = colnames(forest.cover.data[11:50]))
+forest.cover.data$Soil_Type <- factor(as.matrix(forest.cover.data[,15:54])%*%1:length(15:54), labels = colnames(forest.cover.data[15:54]))
 
 soil.type.dummy.vars <- model.matrix(~Soil_Type, data = forest.cover.data)[,-1]
 colnames(soil.type.dummy.vars) <- gsub("TypeSoil_Type_","Type",colnames(soil.type.dummy.vars))
