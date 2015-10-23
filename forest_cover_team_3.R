@@ -449,3 +449,638 @@ a <- rf.pred
 b <- forest.cover.data1[-train,"Cover_Type_Factor"]
 xtab<-table(a,b)
 confusionMatrix(xtab) # randome forest test data confusion matrix
+
+#### Merge the Dummy Columns ####
+
+	## Soil ##
+	> forest.cover.data$Soil_Type     <- names(forest.cover.data[15:54])[apply(forest.cover.data[15:54], 1, match, x = 1)]		
+	> forest.cover.data$Soil_Type.II  =  factor(forest.cover.data$Soil_Type, levels = c("2702", "2703", "2704", "2705", "2706", "2717", "3501", "3502", "4201", "4703", "4704", "4744", "4758", "5101", "5151", "6101", "6102", "6731", "7101", "7102", "7103", "7201", "7202", "7700", "7701", "7702", "7709", "7710", "7745", "7746", "7755", "7756", "7757", "7790", "8703", "8707", "8708", "8771", "8772", "8776"), labels=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40))
+	> forest.cover.data$Soil_Type.III =  ifelse(as.numeric(forest.cover.data$Soil_Type.II)==2703 | as.numeric(forest.cover.data$Soil_Type.II)==2717 | as.numeric(forest.cover.data$Soil_Type.II)==2717 | as.numeric(forest.cover.data$Soil_Type.II)==3501 | as.numeric(forest.cover.data$Soil_Type.II)==4703 | as.numeric(forest.cover.data$Soil_Type.II)==5151 | as.numeric(forest.cover.data$Soil_Type.II)==6102 | as.numeric(forest.cover.data$Soil_Type.II)==8707 | as.numeric(forest.cover.data$Soil_Type.II)==8777, 41, forest.cover.data$Soil_Type.II) 
+
+	## Wilderness_Area ##
+
+	> forest.cover.data$Wilderness     <- names(forest.cover.data[11:14])[apply(forest.cover.data[11:14], 1, match, x = 1)]
+	> forest.cover.data$Wilderness.II  =  factor(forest.cover.data$Wilderness, levels=c("Rawah", "Comanche_Peak", "Cache_la_Poudre", "Neota"), labels = c(1,2,3,4))
+
+
+#####
+# Train/Test Split
+ #####
+# 
+
+
+# split data into training set and test 
+> set.seed(465)
+
+> forest.cover.data$gp=runif(dim(forest.cover.data)[1])				## The dim() formula gives you the number of rows.  The runif() formula gives you random numbers up to the number of rows. 
+> train=subset(forest.cover.data, forest.cover.data$gp >.30)
+
+
+> dim(train)
+  [1] 406899     81
+
+> test = subset(forest.cover.data, forest.cover.data$gp <=.30)
+> dim(test)
+  [1] 174336     81
+    
+
+##### FITTING REGRESSION TREES ######
+
+> library(ISLR)
+> library(tree)
+> library(MASS)
+
+> tree.price=tree(Cover_Type ~ Elevation + Aspect + Slope + Horizontal_Distance_Hydrology + Vertical_Distance_Hydrology + Horizontal_Distance_Roadways + Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_Fire + Wilderness.II + Soil_Type.III, train)
+> summary(tree.price)
+
+	Regression tree:
+
+	tree(formula = Cover_Type ~ Elevation + Aspect + Slope + Horizontal_Distance_Hydrology + 
+    	Vertical_Distance_Hydrology + Horizontal_Distance_Roadways + 
+    	Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_Fire + 
+    	Wilderness.II + Soil_Type.III, data = train)
+
+	Variables actually used in tree construction:
+	[1] "Elevation"     "Wilderness.II" "Soil_Type.III"
+
+	Number of terminal nodes:  7 
+	Residual mean deviance:  1.261 = 512800 / 406700 
+
+	Distribution of residuals:
+   
+	Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+	-4.4870 -0.5419 -0.1663  0.0000  0.4581  5.4580
+
+> tree.price
+
+	node) 			  split 	   n 		deviance 	 yval
+       	1) 	root 				406675 		790500 		2.050  
+   	2) 	Elevation 	< 2578.5 	40205  		85860 		3.577  
+     	4) 	Wilderness.II: 	     1 		3410   		1139 		2.063 *
+     	5) 	Wilderness.II:      2,3 	36795  		76190 		3.717 *
+   	3) 	Elevation 	> 2578.5 	366470 		600700 		1.883  
+     	6) 	Soil_Type.III 	< 34.5 		338243 		280200 		1.749  
+      	12) 	Elevation 	< 2920.5 	111927 		108900 		2.166 *
+      	13) 	Elevation 	> 2920.5 	226316 		142200 		1.542 *
+     	7) 	Soil_Type.III 	> 34.5 		28227 		241500 		3.490  	
+      	14) 	Wilderness.II:     1,4 		17587 		113700 		2.475 *
+      	15) 	Wilderness.II: 	    2 		10640  		79660 		5.169  
+        30) 	Elevation 	< 3227.5 	1153   		7242 		2.548 *
+        31) 	Elevation 	> 3227.5 	9487  		63540 		5.487 *
+	* denotes terminal node
+
+## With this code, we plot the tree.
+
+> plot(tree.price)
+> text(tree.price)
+
+
+## We now make predictions on the test set:
+
+> yhat=predict(tree.price, newdata=test)
+> tree.test=test["Cover_Type"]
+
+
+> yhat.matrix=as.matrix(yhat)
+  [1] 174336      1
+
+> tree.test.matrix=as.matrix(tree.test)
+
+
+> mean((yhat.matrix-tree.test.matrix)^2)							## This is MSE
+  [1] 1.261655
+ 
+> sd((yhat.matrix-tree.test.matrix)^2)/sqrt(dim(test)[1])   					## Standard Error
+  [1] 0.009198927
+
+> 1-sum((yhat.matrix-tree.test.matrix)^2)/sum((mean(tree.test.matrix)-tree.test.matrix)^2)		## R^2
+  [1] 0.357922
+
+> table(yhat.matrix, tree.test.matrix)
+  
+  			tree.test.matrix
+yhat.matrix               1       2      3      4     5      6      7
+  1 			50527	44934 	 0      0    188     0    1197
+  2    			 48	1387     0      0     52     0      0
+  3  			6226	36006	2169    0    2528   1034   13
+  4  			5470	300      0      0      0     0    1744
+  5   			329	61	 0      0      0     0     94
+  6    			 58	2054	8558   880    74   4193     0
+  7   			943	76	 0      0      0     0     3193
+
+_____________________________________________________________________________________________________________________________________
+
+## With this code, we now prune the tree down.........
+
+> names(tree.price)
+  [1] "frame"   "where"   "terms"   "call"    "y"       "weights"
+
+> cv.tree=cv.tree(tree.price)
+	$size
+	[1]     7       6         5       4        3        2         1
+
+	$dev
+	[1] 512989.0 530352.6 530352.6 559535.8 607644.0 686632.3 790533.1
+
+	$k
+	[1]       -Inf   8534.804   8879.769  29204.125  48115.084  79019.031 103952.224
+
+	$method
+	[1] "deviance"
+
+	attr(,"class")
+	[1] "prune"         "tree.sequence"
+
+
+
+> plot(cv.tree$size, cv.tree$dev, type='b')
+
+## Based on the plot of CV, we prune the tree using the following code:
+
+> prune.tree=prune.tree(tree.price, best=7)
+> plot(prune.tree)
+> text(prune.tree, pretty=0)
+
+> yhat.pruned=predict(prune.tree, newdata=test)
+
+> mean((yhat.pruned-tree.test.matrix)^2)							## This is MSE
+  [1] 1.261655
+
+ 
+> sd((yhat.pruned-tree.test.matrix)^2)/sqrt(dim(test)[1])   					## Standard Error
+  [1] 0.009198927
+
+> 1-sum((yhat.pruned-tree.test.matrix)^2)/sum((mean(tree.test.matrix)-tree.test.matrix)^2)	## R^2
+  [1] 0.357922
+
+
+##### BAGGING ######
+
+##  "Bagging is simply a special case of a random forest with m = p." - Auhtors: Gareth James • Daniela Witten • Trevor Hastie • Robert Tibshirani  ##
+> library(randomForest)
+> set.seed(1)
+> names(train.set)
+> bag.tree=randomForest(Cover_Type ~ Elevation + Wilderness.II + Soil_Type.III, train, mtry=3, importance=TRUE)
+
+Elevation + Aspect + Slope + Horizontal_Distance_Hydrology + Vertical_Distance_Hydrology + Horizontal_Distance_Roadways + Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_Fire + Wilderness.II + Soil_Type.III
+
+
+> bag.tree	## Note that the formula mtry=13 above means that the model will use all 13 predictors.
+
+
+# We now test this model on the validation set.
+
+> yhat.bag = predict(bag.tree, newdata=test.set)
+
+> yhat.bag.matrix=as.matrix(yhat.bag)
+> tree.bag.matrix=as.matrix(tree.test)
+
+> plot(yhat.bag.matrix, tree.bag.matrix)
+> abline(0,1)
+
+> mean((yhat.bag.matrix-tree.bag.matrix)^2)	
+  [1] 						
+  [1] 	
+
+> sd((yhat.bag.matrix-tree.bag.matrix)^2)/sqrt(dim(test.set)[1])   			# Standard Error
+  [1] 
+
+> 1-sum((yhat.bag.matrix-tree.bag.matrix)^2)/sum((mean(tree.bag.matrix)-tree.bag.matrix)^2)
+  [1] 
+
+
+
+##### Boosting ######
+
+> library(gbm)
+> set.seed(1)
+> boost.tree=gbm(Cover_Type ~ Elevation + Aspect + Slope + Horizontal_Distance_Hydrology + Vertical_Distance_Hydrology + Horizontal_Distance_Roadways + Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_Fire + Wilderness.II + Soil_Type.III, data=train, distribution="gaussian", n.trees=1000, interaction.depth=4)
+
+> summary(boost.tree)
+
+Elevation                                         Elevation 56.1281636
+Soil_Type.III                                 Soil_Type.III 27.1895005
+Wilderness.II                                 Wilderness.II 15.6039158
+Horizontal_Distance_Hydrology Horizontal_Distance_Hydrology  0.4533118
+Horizontal_Distance_Fire           Horizontal_Distance_Fire  0.3608064
+Horizontal_Distance_Roadways   Horizontal_Distance_Roadways  0.2643019
+Aspect                                               Aspect  0.0000000
+Slope                                                 Slope  0.0000000
+Vertical_Distance_Hydrology     Vertical_Distance_Hydrology  0.0000000
+Hillshade_9am                                 Hillshade_9am  0.0000000
+Hillshade_Noon                               Hillshade_Noon  0.0000000
+Hillshade_3pm                                 Hillshade_3pm  0.0000000
+
+> par(mfrow =c(1,2))
+> plot(boost.tree, i="Elevation")	# You choose variable that you want to see plotted
+> plot(boost.tree, i="Soil_Type.III")	# You choose variable that you want to see plotted
+
+> boost.matrix=as.matrix(boost.tree)
+> yhat.boost = predict(boost.tree, newdata=test, n.trees=1000)
+
+> mean((yhat.boost-tree.test.matrix)^2)								## This is MSE
+  [1] 1.366025
+
+ 
+> sd((yhat.boost-tree.test.matrix)^2)/sqrt(dim(test)[1])   					## Standard Error
+  [1] 0.008964941
+
+> 1-sum((yhat.boost-tree.test.matrix)^2)/sum((mean(tree.test.matrix)-tree.test.matrix)^2)	## R^2
+  [1] 0.3048063
+
+
+# We use the formula below to create new models with different shrinkage and see if it improves the results.
+
+> boost.tree.2=gbm(Cover_Type ~ Elevation + Aspect + Slope + Horizontal_Distance_Hydrology + Vertical_Distance_Hydrology + Horizontal_Distance_Roadways + Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_Fire + Wilderness.II + Soil_Type.III, data=train, distribution="gaussian", n.trees=500, interaction.depth=4, shrinkage=0.2, verbose=F)
+
+> yhat.boost.2=predict(boost.tree.2, newdata=test, n.trees=500)
+
+> yhat.boost.matrix.2=as.matrix(yhat.boost.2)								## Mean Squared Error
+> mean((yhat.boost.matrix.2-tree.test.matrix)^2)
+  [1] 0.7356197
+
+> sd((yhat.boost.matrix.2-tree.test.matrix)^2)/sqrt(dim(test)[1])   					## Standard Error
+  [1] 0.005950289
+
+> 1-sum((yhat.boost.2-tree.test.matrix)^2)/sum((mean(tree.test.matrix)-tree.test.matrix)^2)		## R^2
+  [1] 0.6256305
+_________________________________________________________________________________________________________________________________________
+_________________________________________________________________________________________________________________________________________
+
+# Shrinkage of 0.4
+
+> boost.tree.3=gbm(Cover_Type ~ Elevation + Aspect + Slope + Horizontal_Distance_Hydrology + Vertical_Distance_Hydrology + Horizontal_Distance_Roadways + Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_Fire + Wilderness.II + Soil_Type.III, data=train, distribution="gaussian", n.trees=500, interaction.depth=4, shrinkage=0.4, verbose=F)
+
+> yhat.boost.3=predict(boost.tree.3, newdata=test, n.trees=500)
+
+> yhat.boost.matrix.3=as.matrix(yhat.boost.3)								## Mean Squared Error
+> mean((yhat.boost.matrix.3-tree.test.matrix)^2)
+  [1] 0.6617295
+
+> sd((yhat.boost.matrix.3-tree.test.matrix)^2)/sqrt(dim(test)[1])   					## Standard Error
+  [1] 0.005950289
+
+> 1-sum((yhat.boost.3-tree.test.matrix)^2)/sum((mean(tree.test.matrix)-tree.test.matrix)^2)		## R^2
+  [1] 0.6632345
+
+
+> yhat.boost.3.matrix=as.matrix(yhat.boost.3)
+> table(yhat.boost.3.matrix, tree.test.matrix)
+
+_________________________________________________________________________________________________________________________________________
+_________________________________________________________________________________________________________________________________________
+
+# Shrinkage of 0.3
+
+> boost.tree.4=gbm(Cover_Type ~ Elevation + Aspect + Slope + Horizontal_Distance_Hydrology + Vertical_Distance_Hydrology + Horizontal_Distance_Roadways + Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_Fire + Wilderness.II + Soil_Type.III, data=train, distribution="gaussian", n.trees=500, interaction.depth=4, shrinkage=0.3, verbose=F)
+
+> yhat.boost.4=predict(boost.tree.4, newdata=test, n.trees=500)
+
+> yhat.boost.matrix.4=as.matrix(yhat.boost.4)								## Mean Squared Error
+> mean((yhat.boost.matrix.4-tree.test.matrix)^2)
+  [1] 0.685798
+
+> sd((yhat.boost.matrix.4-tree.test.matrix)^2)/sqrt(dim(test)[1])   					## Standard Error
+  [1] 0.005512805
+
+> 1-sum((yhat.boost.4-tree.test.matrix)^2)/sum((mean(tree.test.matrix)-tree.test.matrix)^2)		## R^2
+  [1] 0.6509856
+
+_________________________________________________________________________________________________________________________________________
+_________________________________________________________________________________________________________________________________________
+
+# Shrinkage of 0.1
+
+> boost.tree.5=gbm(Cover_Type ~ Elevation + Aspect + Slope + Horizontal_Distance_Hydrology + Vertical_Distance_Hydrology + Horizontal_Distance_Roadways + Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_Fire + Wilderness.II + Soil_Type.III, data=train, distribution="gaussian", n.trees=500, interaction.depth=4, shrinkage=0.1, verbose=F)
+
+> yhat.boost.5=predict(boost.tree.5, newdata=test, n.trees=500)
+
+> yhat.boost.matrix.5=as.matrix(yhat.boost.5)								## Mean Squared Error
+> mean((yhat.boost.matrix.5-tree.test.matrix)^2)
+  [1] 0.8223398
+
+> sd((yhat.boost.matrix.5-tree.test.matrix)^2)/sqrt(dim(test)[1])   					## Standard Error
+  [1] 0.00641892
+
+> 1-sum((yhat.boost.5-tree.test.matrix)^2)/sum((mean(tree.test.matrix)-tree.test.matrix)^2)		## R^2
+  [1] 0.5814971
+
+_________________________________________________________________________________________________________________________________________
+_________________________________________________________________________________________________________________________________________
+
+# Shrinkage of 0.05
+
+> boost.tree.6=gbm(Cover_Type ~ Elevation + Aspect + Slope + Horizontal_Distance_Hydrology + Vertical_Distance_Hydrology + Horizontal_Distance_Roadways + Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_Fire + Wilderness.II + Soil_Type.III, data=train, distribution="gaussian", n.trees=500, interaction.depth=4, shrinkage=0.05, verbose=F)
+
+> yhat.boost.6=predict(boost.tree.6, newdata=test, n.trees=500)
+
+> yhat.boost.matrix.6=as.matrix(yhat.boost.6)								## Mean Squared Error
+> mean((yhat.boost.matrix.6-tree.test.matrix)^2)
+  [1] 0.9126393
+
+> sd((yhat.boost.matrix.6-tree.test.matrix)^2)/sqrt(dim(test)[1])   					## Standard Error
+  [1] 0.006848817
+
+> 1-sum((yhat.boost.6-tree.test.matrix)^2)/sum((mean(tree.test.matrix)-tree.test.matrix)^2)		## R^2
+  [1] 0.5355421
+
+_________________________________________________________________________________________________________________________________________
+_________________________________________________________________________________________________________________________________________
+
+# Shrinkage of 0.025
+
+> boost.tree.7=gbm(Cover_Type ~ Elevation + Aspect + Slope + Horizontal_Distance_Hydrology + Vertical_Distance_Hydrology + Horizontal_Distance_Roadways + Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_Fire + Wilderness.II + Soil_Type.III, data=train, distribution="gaussian", n.trees=500, interaction.depth=4, shrinkage=0.025, verbose=F)
+
+> yhat.boost.7=predict(boost.tree.7, newdata=test, n.trees=500)
+
+> yhat.boost.matrix.7=as.matrix(yhat.boost.7)								## Mean Squared Error
+> mean((yhat.boost.matrix.7-tree.test.matrix)^2)
+  [1] 1.000791
+
+> sd((yhat.boost.matrix.7-tree.test.matrix)^2)/sqrt(dim(test)[1])   					## Standard Error
+  [1] 0.007331368
+
+> 1-sum((yhat.boost.7-tree.test.matrix)^2)/sum((mean(tree.test.matrix)-tree.test.matrix)^2)		## R^2
+  [1] 0.4906803
+
+_________________________________________________________________________________________________________________________________________
+_________________________________________________________________________________________________________________________________________
+
+## Bayesian Trees ##
+
+> library(rpart)
+> mytree = rpart(Cover_Type ~ Elevation + Aspect + Slope + Horizontal_Distance_Hydrology + Vertical_Distance_Hydrology + Horizontal_Distance_Roadways + Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_Fire + Wilderness.II + Soil_Type.III, data=train, minbucket = 1, minsplit=1)
+> summary(mytree)
+
+        CP 	  nsplit       rel 	  error           xerror             xstd
+	1	0.13149721      0 	1.0000000 	1.0000049	0.004140864
+	2	0.09995729      1 	0.8685028 	0.8692314 	0.004084104
+	3 	0.06086449      2 	0.7685455 	0.7698051 	0.002969443
+	4	0.03694256      3 	0.7076810 	0.7089460 	0.003131523
+	5	0.01123271      4 	0.6707385 	0.6706482 	0.003092120
+	6	0.01079633      5 	0.6595058 	0.6608297 	0.003114809
+	7	0.01000000      6 	0.6487094 	0.6517338 	0.003107035
+
+
+> rpart2 = rpart(Cover_Type ~ Elevation + Aspect + Slope + Horizontal_Distance_Hydrology + Vertical_Distance_Hydrology + Horizontal_Distance_Roadways + Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_Fire + Wilderness.II + Soil_Type.III, data=train, parms=list(prior=c(0.85,0.15)), cp=.01) 
+> summary(rapart)
+  
+  Variable importance
+
+                        Elevation                  Soil_Type.III                  Wilderness.II 
+                           38                            31                            28 
+     
+		Horizontal_Distance_Fire          Hillshade_Noon           Horizontal_Distance_Hydrology 
+                            1                             1                             1 
+
+
+
+> plot(rpart2)
+> text(rpart2)
+
+ 
+
+> test.data.frame=data.frame(test)	## For Bayesian, one must use a dataframe.
+> rpart2.predict = predict(rpart2, test.data.frame)
+
+
+> table(rpart2.predict, test.data.frame$Cover_Type)
+
+	rpart2.predict         	   1     2      3     4     5     6     7
+  			1 	50527 	44934   0     0   188     0    1197
+  			2    	 48   	1387    0     0    52     0     0
+  			3    	6226 	36006  2169   0   2528  1034    13
+  			4  	5470     300    0     0     0     0    1744
+  			5   	329    	 61     0     0     0     0    94
+  			6      	58  	2054  8558   880   74   4193    0
+  			7      	943      76     0     0     0     0    3193
+
+
+
+
+ 								
+> mean((rpart2.predict-test.data.frame$Cover_Type)^2)								## Mean Squared Error
+  [1] 1.261655
+
+> sd((rpart2.predict-test.data.frame$Cover_Type)^2)/sqrt(dim(test)[1])   					## Standard Error
+  [1] 0.009198927
+
+> 1-sum((rpart2.predict-test.data.frame$Cover_Type)^2)/sum((mean(tree.test.matrix)-tree.test.matrix)^2)		## R^2
+  [1] 0.357922
+
+_________________________________________________________________________________________________________________________________________________________________
+_________________________________________________________________________________________________________________________________________________________________
+_________________________________________________________________________________________________________________________________________________________________
+_________________________________________________________________________________________________________________________________________________________________
+_________________________________________________________________________________________________________________________________________________________________
+_________________________________________________________________________________________________________________________________________________________________
+
+
+#### Cluster Analysis ####
+
+
+## K-Means
+
+	# K-means clustering is the most popular partitioning method. It requires the analyst to specify the number of clusters to extract. 
+	# A plot of the within groups sum of squares by number of clusters extracted can help determine the appropriate number of clusters. 
+	
+	# In terms of a data.frame, a clustering algorithm finds out which rows are similar to each other.	
+
+	# A robust version of K-means based on mediods can be invoked by using pam( ) instead of kmeans( ). The function pamk( ) in the 
+	fpc package is a wrapper for pam that also prints the suggested number of clusters based on optimum average silhouette width.
+
+	> require(cluster)
+	> set.seed(17)
+	> kmeans.dataframe=as.data.frame(train)
+	> kmeans.dataframe.2 = kmeans.dataframe[,c(1:15, 80)] 	
+
+	> kmeans.2=kmeans(kmeans.dataframe.2,    2,   nstart=20)
+	> kmeans.3=kmeans(kmeans.dataframe.2,    3,   nstart=20)
+	> kmeans.4=kmeans(kmeans.dataframe.2,    4,   nstart=20)
+	> kmeans.7=kmeans(kmeans.dataframe.2,    7,   nstart=20)
+	> kmeans.10=kmeans(kmeans.dataframe.2,  10,   nstart=10)
+	> kmeans.15=kmeans(kmeans.dataframe.2,  15,   nstart=10)	
+	> kmeans.20=kmeans(kmeans.dataframe.2,  20,   nstart=10)
+
+	> library(fpc)
+	> require(fpc)
+	> best.cluster=kmeansruns(kmeans.dataframe.2, krange=1:7, criterion="ch")
+	> asw.cluster =kmeansruns(kmeans.dataframe.2, krange=1:7, criterion="asw")
+
+	> plot(kmeans.7$cluster, data=kmeans.dataframe.2,  class="Cover_Type")
+
+	> kmeansAIC = function(fit){
+	  m = ncol(fit$centers)
+	  n = length(fit$cluster)
+	  k = nrow(fit$centers)
+	  D = fit$tot.withinss
+	  return(D + 2*m*k)
+	   }
+	> aic=sapply(kmeans.7, kmeansAIC)
+
+	
+	> kmeans.2	# Within Sum of Squares equals 46.6%	R This provides the distance between a point and its centroid. R minimizes within cluster sum-of-squares.
+	> kmeans.3	# Within Sum of Squares equals 62.0%
+	> kmeans.4	# Within Sum of Squares equals 70.6%
+	> kmeans.7	# Within Sum of Squares equals 82.2%
+	> kmeans.10	# Within Sum of Squares equals 86.5%
+	> kmeans.15	# Within Sum of Squares equals 90.2%
+	> kmeans.20	# Within Sum of Squares equals 91.9%
+
+	> kmeans.2$tot.withinss		[1] 938057353598
+	> kmeans.3$tot.withinss		[1] 666619444909
+	> kmeans.4$tot.withinss		[1] 516968233315
+	> kmeans.7$tot.withinss		[1] 313227451254
+	> kmeans.10$tot.withinss	[1] 237041697753
+	> kmeans.15$tot.withinss	[1] 172647604334
+	> kmeans.20$tot.withinss	[1] 142509924114
+
+_______________________________________________________________________________________________________
+_______________________________________________________________________________________________________
+
+
+	## Combining ratios $withinss and $betweenss with an appropriate algorithm may help to choose the right number of k clusters
+	# First iteration is directly below
+	> wss <- sum(kmeans(kmeans.dataframe.2, centers=1)$withinss)
+	
+	# Iterations 2:15
+	> for (i in 2:15) wss[i] <- sum(kmeans(kmeans.dataframe.2, centers=i)$withinss)
+	
+	# Plot the 15 withinss values. One for each k 
+	> plot(1:15, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
+
+_____________________________________________________________________________________________________________________________________________________________
+
+	> require(cluster)
+	> theGap=clusGap(kmeans.dataframe.2, FUNcluster=pam, K.max=10)
+	> gapDF = as.data.frame(theGap$Tab)
+	> gapDF
+
+		logW		E.logW       	gap      	SE.sim
+	1	8.572041 	9.341200 	0.7691586	0.001987463
+	2	8.526392 	9.309235 	0.7828428 	0.009333276
+	3	8.512830 	9.299332 	0.7865024 	0.005622896
+	4	8.504951 	9.291546 	0.7865953 	0.004182545
+	5	8.498858 	9.286134 	0.7872758 	0.003375069
+	6	8.492443 	9.281628 	0.7891848 	0.003043337
+	7	8.483840 	9.277796 	0.7939559 	0.002632973
+	8	8.479272 	9.274548 	0.7952759 	0.002501184
+	9	8.473463 	9.271314 	0.7978515 	0.002356782
+	10	8.464936 	9.268428 	0.8034923 	0.002370468
+	11	8.461417 	9.265692 	0.8042758 	0.002289062
+	12	8.455662 	9.263114 	0.8074519 	0.002184732
+	13	8.452694 	9.260841 	0.8081468 	0.002121427
+	14	8.449890 	9.258659 	0.8087693 	0.002066710
+	15	8.446192 	9.256534 	0.8103415 	0.001989467
+	16	8.443606 	9.254447 	0.8108416 	0.002026683
+	17	8.440895 	9.252487 	0.8115917 	0.001895343
+	18	8.437073 	9.250577 	0.8135040 	0.001864144
+	19	8.434761	9.248635 	0.8138735 	0.001748455
+	20	8.432359	9.246870 	0.8145108 	0.001797018
+
+
+	> library(ggplot2)
+	> require(ggplot2)
+	# logW curves
+	> ggplot(gapDF, aes=(x=1:nrow(gapDF))) +
+	+ geom_line(aes(y=logW), color="blue") +
+	+ geom_point(aes(y=logW), color="blue") +
+	+ geom_line(aes(y=E.logW), color="green") +
+	+ geom_point(aes(E.logW), color="green") +
+	+ labs(x="Number of Clusters")
+
+	# gap curve
+	> ggplot(gapDF, aes=(x=1:nrow(gapDF))) +
+	+ geom_line(aes(y=gap), color="red") +
+	+ geom_point(aes(y=gap), color="red") +
+	+ geom_errorbar(aes(ymin=gap-SE.sim, ymax=gap+SE.sim), color="red") + 
+	+ labs(x="Number of Clusters", y="Gap")
+
+
+_______________________________________________________________________________________________________________________________________________
+_____________________________________________________________________________________________________________________________________________________________________________________________
+_____________________________________________________________________________________________________________________________________________________________________________________________
+
+## McLust: Model Based Clustering
+
+## The key idea for model-based clustering is that observations come from groups
+with different statistical distributions (such as different means and variances). The
+algorithms try to find the best set of such underlying distributions to explain the
+observed data. We use the mclust package [53, 54] to demonstrate this.
+
+> library(mclust)
+> seg.mc.2 <- Mclust(kmeans.dataframe.2, k=2)
+> summary(seg.mc)
+
+> seg.mc.4 <- Mclust(kmeans.dataframe.2, k=4)
+> summary(seg.mc)
+
+> seg.mc.7 <- Mclust(kmeans.dataframe.2, k=7)
+> summary(seg.mc)
+
+> seg.mc.10 <- Mclust(kmeans.dataframe.2, k=10)
+> summary(seg.mc)
+
+> seg.mc.14 <- Mclust(kmeans.dataframe.2, k=14)
+> summary(seg.mc)
+_____________________________________________________________________________________________________________________________________________________________________________________________
+_____________________________________________________________________________________________________________________________________________________________________________________________
+
+
+## Hierarchical Clustering
+
+
+	> kmeans.dataframe=as.data.frame(train)						## This creates the dataframe
+
+	> dist.1=dist(kmeans.dataframe, method="euclidean")				## Creates the model using complete
+	> hierarc.comp.1=hclust(dist.1, method="complete")
+	> plot.comp.1=plot(hierarc.comp.1)
+	> plot(cut(as.dendrogram(hierarc.comp.1), h=15)$lower[[50]])	# Best cut by far....
+	> hierarc.segment=cutree(hierarc.comp.1, k=2)					## You have to CUT the TREE prior to runnning the mean function!!
+	> table(hierarc.segment)
+	> seg.summ <- function(cluster.data, groups){aggregate(cluster.data, list(groups), function(x) mean(as.numeric(x)))}
+	> seg.summ(cluster.data, hierarc.segment)  ## This gives you the means of the 2 cluster solution!!!
+
+
+
+	> hierarc.avg.2=hclust(dist(hier.arch.dataframe), method="average")	## Creates the model using complete
+	> hierarc.segment.2=cutree(hierarc.avg.2, k=4)				## You have to CUT the TREE prior to runnning the mean function!!
+	> table(hierarc.segment.2)						## Tells you how many observations are in each cluster
+
+
+	> hc.clusters=cutree(hierarc.comp.1, 4)
+	> table(hc.clusters)							## This formula tells you how many observations are in each cluster.
+
+	> cluster.cut.4=rect.hclust(hierarc.comp.1, k=4, border="red")		## This splits it into 4 clusters.
+	> rect.hclust(hierarc.comp.2, k=13, border="red")			## This splits it into 13 clusters.
+
+		
+
+	# A very nice tool for displaying more appealing trees is provided by the R package ape. In this case, what we need is to convert the hclust objects into phylo pbjects with the funtions as.phylo	
+	# load package ape; remember to install it: install.packages('ape')
+	> library(ape)
+	# plot basic tree
+	> plot(as.phylo(hierarc.comp.2), cex = 0.9, label.offset = 1)
+
+
+	This is where we decide to cut the tree:
+	> seg.hc.avg.segment <- cutree(hierarc.comp.2, k=2)			## You have to CUT the TREE prior to runnning the mean function!!
+	> table(seg.hc.avg.segment)
+	
+
+	> rect.hclust.3=rect.hclust(hierarc.comp.1, k=3, border="red")		# Split into 3 clusters
+	> rect.hclust.13=rect.hclust(hierarc.avg.2, k=13, border="red")		# Split into 13 clusters
+
+
+_____________________________________________________________________________________________________________________________________________________________
+
+
+	> cor(cophenetic(data.frame(hierarc.comp.2)), segment.dist)				# This gives us an R^2 of 0.35.
+		[1] 0.5947901	
+
+________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
+	> plot(hier.arc.avg) # Need this first
+	> rect.hclust(hier.arc.avg, 20)						# This cut the dendrogram into 20 clusters.
+	> seg.hc.avg.segment <- cutree(hier.arc.avg, k=20)
+	> table(seg.hc.avg.segment)
