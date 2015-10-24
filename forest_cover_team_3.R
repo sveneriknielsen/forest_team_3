@@ -1438,6 +1438,71 @@ l <- union(a, b)
 Table2 <- table(factor(a, l), factor(b, l))
 confusionMatrix(Table2)
 
+#random forest model
+library(randomForest);
+forest_fit <- randomForest(Cover_Type_Factor ~ Elevation + Aspect + Slope + Horizontal_Distance_To_Hydrology + Vertical_Distance_To_Hydrology + Horizontal_Distance_To_Roadways + Hillshade_9am + Hillshade_Noon + Hillshade_3pm + Horizontal_Distance_To_Fire_Points + wilderness_area + climate_zone + geologic_zone + (Elevation * geologic_zone) + (geologic_zone * climate_zone), data=forest.cover.data[train,], method="class", ntree=151);
+
+summary(forest_fit);
+
+#training data in-sample prediction
+table(forest_fit$predict);
+#confusion matrix
+table(forest_fit$predict, forest.cover.data[train,]$Cover_Type_Factor);
+#number of correct predictions
+sum(ifelse(forest_fit$predict == forest.cover.data[train,]$Cover_Type_Factor, 1, 0));
+#percentage correct
+sum(ifelse(forest_fit$predict == forest.cover.data[train,]$Cover_Type_Factor, 1, 0))/dim(forest.cover.data[train,])[1];
+
+fc <- forest.cover.data[-train,]$Cover_Type_Factor;
+fc <- as.data.frame(fc);
+colnames(fc)[1] <- "Cover_Type_Factor";
+
+#predict 
+library(e1071);
+
+fc$Forest_predict <- predict(forest_fit, newdata=forest.cover.data[-train,]);
+
+#test data out-of-sample prediction
+table(fc$Forest_predict);
+#confusion matrix
+table(fc$Forest_predict, fc$Cover_Type_Factor);
+#number of correct predictions
+sum(ifelse(fc$Forest_predict == fc$Cover_Type_Factor, 1, 0));
+#percentage correct
+sum(ifelse(fc$Forest_predict == fc$Cover_Type_Factor, 1, 0))/dim(fc)[1];
+
+#produce variable improtance plot
+varImpPlot(forest_fit, main="Random Forest Variable Importance");
+
+library(e1071);
+
+#support vector machine model
+
+svm_fit <- svm(Cover_Type_Factor ~ ., data=forest.cover.data[train,], type="C-classification", gamma=0.9, cost=10);
+
+TrainingData_svm <- forest.cover.data[train,];
+
+#training data in-sample prediction accuracy
+TrainingData_svm$SVM_predict_in <- predict(forest_fit, newdata=forest.cover.data[train,]);
+
+#confusion matrix
+table(TrainingData_svm$SVM_predict_in, forest.cover.data[train,]$Cover_Type_Factor);
+#number of correct predictions
+sum(ifelse(TrainingData_svm$SVM_predict_in == forest.cover.data[train,]$Cover_Type_Factor, 1, 0));
+#percentage correct
+sum(ifelse(TrainingData_svm$SVM_predict_in == forest.cover.data[train,]$Cover_Type_Factor, 1, 0))/dim(forest.cover.data[train,])[1];
+
+# predict and calculate out-of-sample accracy
+fc$SVM_predict <- predict(svm_fit, newdata=forest.cover.data[-train,]);
+
+#confusion matrix
+table(fc$SVM_predict, fc$Cover_Type_Factor);
+#number of correct predictions
+sum(ifelse(fc$SVM_predict == fc$Cover_Type_Factor, 1, 0));
+#percentage correct
+sum(ifelse(fc$SVM_predict == fc$Cover_Type_Factor, 1, 0))/dim(fc)[1];
+
+
 #####
 #plot multiclass ROC curve
 #####
