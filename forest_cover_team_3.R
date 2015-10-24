@@ -1550,3 +1550,267 @@ print(paste("Average AUC for all prediction classes: ", round(auc_tot/auc_num,3)
 # rm(auc_num)
 # rm(auc_tot)
 #
+
+#### LOGISTIC REGRESSION MODEL BUILD ####
+y <- "Cover_Type_Lodgepole_Pine"
+formula <- paste(y, formula.rhs, sep = "~")
+
+full.lodgepole.pine <- glm(formula, data = forest.cover.data[train,], family = binomial(link = "logit"))
+summary(full.lodgepole.pine)
+backward.lodgepole.pine <- step(full.lodgepole.pine, direction = "backward")
+summary(backward.lodgepole.pine)
+
+
+# Working on loop to get all code to run in only a few lines as opposed to hardcoding everything
+# response.vars <- c("Cover_Type_Ponderosa_Pine", "Cover_Type_Cottonwood_Willow",
+#                    "Cover_Type_Aspen", "Cover_Type_Douglas-fir", "Cover_Type_Krumholz", "Cover_Type_Lodgepole_Pine")
+
+# for (response in 1:length(response.vars)) {
+#   formula <- paste(response, formula.rhs, sep = "~")
+#   friendly.name <- gsub("^.*_.*_","",response)
+#   full.model <- paste(friendly.name, ".full", "<- glm(", formula, ", data = ", data)
+#   do.call(full.model)
+#   backward.model <- paste(friendly.name, ".backward", "<- step(", friendly.name, ".full, direction = \"backward\"")
+#   do.call(backward.model)
+# }
+
+
+y <- "Cover_Type_Ponderosa_Pine"
+formula <- paste(y, formula.rhs, sep = "~")
+full.ponderosa.pine <- glm(formula, data = forest.cover.data[train,], family = binomial(link = "logit"))
+summary(full.ponderosa.pine)
+backward.ponderosa.pine <- step(full.ponderosa.pine, direction = "backward")
+summary(backward.ponderosa.pine)
+
+y <- "Cover_Type_Cottonwood_Willow"
+formula <- paste(y, formula.rhs, sep = "~")
+full.cottonwood.willow <- glm(formula, data = forest.cover.data[train,], family = binomial(link = "logit"))
+summary(full.cottonwood.willow)
+backward.cottonwood.willow <- step(full.cottonwood.willow, direction = "backward")
+summary(backward.cottonwood.willow)
+
+y <- "Cover_Type_Aspen"
+formula <- paste(y, formula.rhs, sep = "~")
+full.aspen <- glm(formula, data = forest.cover.data[train,], family = binomial(link = "logit"))
+summary(full.aspen)
+backward.aspen <- step(full.aspen, direction = "backward")
+summary(backward.aspen)
+
+y <- "Cover_Type_Douglas_fir"
+formula <- paste(y, formula.rhs, sep = "~")
+full.douglas.fir <- glm(formula, data = forest.cover.data[train,], family = binomial(link = "logit"))
+summary(full.douglas.fir)
+backward.douglas.fir <- step(full.douglas.fir, direction = "backward")
+summary(backward.douglas.fir)
+
+y <- "Cover_Type_Krummholz"
+formula <- paste(y, formula.rhs, sep = "~")
+full.krummholz <- glm(formula, data = forest.cover.data[train,], family = binomial(link = "logit"))
+summary(full.krummolz)
+backward.krummholz <- step(full.krummholz, direction = "backward")
+summary(backward.krummholz)
+
+forest.cover.data$Cover_Type_Spruce_Fir <- ifelse(forest.cover.data$Cover_Type_Factor == 'Spruce_Fir', 1,0)
+y <- "Cover_Type_Spruce_Fir"
+formula <- paste(y, formula.rhs, sep = "~")
+full.spruce.fir <- glm(formula, data = forest.cover.data[train,], family = binomial(link = "logit"))
+summary(full.spruce.fir)
+backward.spruce.fir <- step(full.spruce.fir, direction = "backward")
+summary(backward.spruce.fir)
+
+
+
+summary(backward.lodgepole.pine)
+summary(backward.ponderosa.pine)
+summary(backward.cottonwood.willow)
+summary(backward.aspen)
+summary(backward.douglas.fir)
+summary(backward.krummholz)
+
+#### MAKE PREDICTIONS ####
+forest.cover.data$lodgepole_pred <- predict(backward.lodgepole.pine, newdata = forest.cover.data, type = "response")
+forest.cover.data$ponderosa_pred <- predict(backward.ponderosa.pine, newdata = forest.cover.data, type = "response")
+forest.cover.data$cottonwood_pred <- predict(backward.cottonwood.willow, newdata = forest.cover.data, type = "response")
+forest.cover.data$aspen_pred <- predict(backward.aspen, newdata = forest.cover.data, type = "response")
+forest.cover.data$douglas_pred <- predict(backward.douglas.fir, newdata = forest.cover.data, type = "response")
+forest.cover.data$krummholz_pred <- predict(backward.krummholz, newdata = forest.cover.data, type = "response")
+forest.cover.data$spruce_fir_pred <- predict(backward.spruce.fir, newdata = forest.cover.data, type = "response")
+
+pred.values <- forest.cover.data[,c("lodgepole_pred", "ponderosa_pred", "cottonwood_pred", "aspen_pred", "douglas_pred", "krummholz_pred")]
+                                 
+forest.cover.data$pred <- colnames(pred.values)[apply(pred.values, 1, which.max)]
+forest.cover.data$pred <- as.factor(forest.cover.data$pred)
+
+#### SEE HOW REGRESSION MODELS PERFORM ON TRAINING SET ####
+lodgepole.tab <- table(forest.cover.data[train,]$pred == "lodgepole_pred", forest.cover.data[train,]$Cover_Type_Lodgepole_Pine)
+lodgepole.accuracy <- (lodgepole.tab[1,1] + lodgepole.tab[2,2]) / nrow(forest.cover.data[train,])
+lodgepole.precision <- lodgepole.tab[2,2] / sum(lodgepole.tab[2,])
+lodgepole.recall <- lodgepole.tab[2,2] / sum(lodgepole.tab[,2])
+lodgepole.specificity <- lodgepole.tab[1,1] / (lodgepole.tab[1,1] + lodgepole.tab[1,2])
+
+lodgepole.tab
+lodgepole.accuracy
+lodgepole.precision
+lodgepole.recall
+lodgepole.specificity
+
+ponderosa.tab <- table(forest.cover.data[train,]$pred == "ponderosa_pred", forest.cover.data[train,]$Cover_Type_Ponderosa_Pine)
+ponderosa.accuracy <- (ponderosa.tab[1,1] + ponderosa.tab[2,2]) / nrow(forest.cover.data[train,])
+ponderosa.precision <- ponderosa.tab[2,2] / sum(ponderosa.tab[2,])
+ponderosa.recall <- ponderosa.tab[2,2] / sum(ponderosa.tab[,2])
+ponderosa.specificity <- ponderosa.tab[1,1] / (ponderosa.tab[1,1] + ponderosa.tab[1,2])
+
+ponderosa.tab
+ponderosa.accuracy
+ponderosa.precision
+ponderosa.recall
+ponderosa.specificity
+
+cottonwood.tab <- table(forest.cover.data[train,]$pred == "cottonwood_pred", forest.cover.data[train,]$Cover_Type_Cottonwood_Willow)
+cottonwood.accuracy <- (cottonwood.tab[1,1] + cottonwood.tab[2,2]) / nrow(forest.cover.data[train,])
+cottonwood.precision <- cottonwood.tab[2,2] / sum(cottonwood.tab[2,])
+cottonwood.recall <- cottonwood.tab[2,2] / sum(cottonwood.tab[,2])
+cottonwood.specificity <- cottonwood.tab[1,1] / (cottonwood.tab[1,1] + cottonwood.tab[1,2])
+
+cottonwood.tab
+cottonwood.accuracy
+cottonwood.precision
+cottonwood.recall
+cottonwood.specificity
+
+aspen.tab <- table(forest.cover.data[train,]$pred == "aspen_pred", forest.cover.data[train,]$Cover_Type_Aspen)
+aspen.accuracy <- (aspen.tab[1,1] + aspen.tab[2,2]) / nrow(forest.cover.data[train,])
+aspen.precision <- aspen.tab[2,2] / sum(aspen.tab[2,])
+aspen.recall <- aspen.tab[2,2] / sum(aspen.tab[,2])
+aspen.specificity <- aspen.tab[1,1] / (aspen.tab[1,1] + aspen.tab[1,2])
+
+aspen.tab
+aspen.accuracy
+aspen.precision
+aspen.recall
+aspen.specificity
+
+douglas.tab <- table(forest.cover.data[train,]$pred == "douglas_pred", forest.cover.data[train,]$Cover_Type_Douglas_fir)
+douglas.accuracy <- (douglas.tab[1,1] + douglas.tab[2,2]) / nrow(forest.cover.data[train,])
+douglas.precision <- douglas.tab[2,2] / sum(douglas.tab[2,])
+douglas.recall <- douglas.tab[2,2] / sum(douglas.tab[,2])
+douglas.specificity <- douglas.tab[1,1] / (douglas.tab[1,1] + douglas.tab[1,2])
+
+douglas.tab
+douglas.accuracy
+douglas.precision
+douglas.recall
+douglas.specificity
+
+krummholz.tab <- table(forest.cover.data[train,]$pred == "krummholz_pred", forest.cover.data[train,]$Cover_Type_Krummholz)
+krummholz.accuracy <- (krummholz.tab[1,1] + krummholz.tab[2,2]) / nrow(forest.cover.data[train,])
+krummholz.precision <- krummholz.tab[2,2] / sum(krummholz.tab[2,])
+krummholz.recall <- krummholz.tab[2,2] / sum(krummholz.tab[,2])
+krummholz.specificity <- krummholz.tab[1,1] / (krummholz.tab[1,1] + krummholz.tab[1,2])
+
+krummholz.tab
+krummholz.accuracy
+krummholz.precision
+krummholz.recall
+krummholz.specificity
+
+spruce.fir.tab <- table(forest.cover.data[train,]$pred == "spruce.fir_pred", forest.cover.data[train,]$Cover_Type_Spruce_Fir)
+spruce.fir.accuracy <- (spruce.fir.tab[1,1] + spruce.fir.tab[2,2]) / nrow(forest.cover.data[train,])
+spruce.fir.precision <- spruce.fir.tab[2,2] / sum(spruce.fir.tab[2,])
+spruce.fir.recall <- spruce.fir.tab[2,2] / sum(spruce.fir.tab[,2])
+spruce.fir.specificity <- spruce.fir.tab[1,1] / (spruce.fir.tab[1,1] + spruce.fir.tab[1,2])
+
+spruce.fir.tab
+spruce.fir.accuracy
+spruce.fir.precision
+spruce.fir.recall
+spruce.fir.specificity
+
+
+#### SEE HOW REGRESSION MODELS PERFORM ON TEST SET ####
+set.seed(465)
+train=(sample(1:nrow(forest.cover.data),nrow(forest.cover.data)*0.7))
+
+lodgepole.test.tab <- table(forest.cover.data[-train,]$pred == "lodgepole_pred", forest.cover.data[-train,]$Cover_Type_Lodgepole_Pine)
+lodgepole.test.accuracy <- (lodgepole.test.tab[1,1] + lodgepole.test.tab[2,2]) / nrow(forest.cover.data[-train,])
+lodgepole.test.precision <- lodgepole.test.tab[2,2] / sum(lodgepole.test.tab[2,])
+lodgepole.test.recall <- lodgepole.test.tab[2,2] / sum(lodgepole.test.tab[,2])
+lodgepole.test.specificity <- lodgepole.test.tab[1,1] / (lodgepole.test.tab[1,1] + lodgepole.test.tab[1,2])
+
+lodgepole.test.tab
+lodgepole.test.accuracy
+lodgepole.test.precision
+lodgepole.test.recall
+lodgepole.test.specificity
+
+ponderosa.test.tab <- table(forest.cover.data[-train,]$pred == "ponderosa_pred", forest.cover.data[-train,]$Cover_Type_Ponderosa_Pine)
+ponderosa.test.accuracy <- (ponderosa.test.tab[1,1] + ponderosa.test.tab[2,2]) / nrow(forest.cover.data[-train,])
+ponderosa.test.precision <- ponderosa.test.tab[2,2] / sum(ponderosa.test.tab[2,])
+ponderosa.test.recall <- ponderosa.test.tab[2,2] / sum(ponderosa.test.tab[,2])
+ponderosa.test.specificity <- ponderosa.test.tab[1,1] / (ponderosa.test.tab[1,1] + ponderosa.test.tab[1,2])
+
+ponderosa.test.tab
+ponderosa.test.accuracy
+ponderosa.test.precision
+ponderosa.test.recall
+ponderosa.test.specificity
+
+cottonwood.test.tab <- table(forest.cover.data[-train,]$pred == "cottonwood_pred", forest.cover.data[-train,]$Cover_Type_Cottonwood_Willow)
+cottonwood.test.accuracy <- (cottonwood.test.tab[1,1] + cottonwood.test.tab[2,2]) / nrow(forest.cover.data[-train,])
+cottonwood.test.precision <- cottonwood.test.tab[2,2] / sum(cottonwood.test.tab[2,])
+cottonwood.test.recall <- cottonwood.test.tab[2,2] / sum(cottonwood.test.tab[,2])
+cottonwood.test.specificity <- cottonwood.test.tab[1,1] / (cottonwood.test.tab[1,1] + cottonwood.test.tab[1,2])
+
+cottonwood.test.tab
+cottonwood.test.accuracy
+cottonwood.test.precision
+cottonwood.test.recall
+cottonwood.test.specificity
+
+aspen.test.tab <- table(forest.cover.data[-train,]$pred == "aspen_pred", forest.cover.data[-train,]$Cover_Type_Aspen)
+aspen.test.accuracy <- (aspen.test.tab[1,1] + aspen.test.tab[2,2]) / nrow(forest.cover.data[-train,])
+aspen.test.precision <- aspen.test.tab[2,2] / sum(aspen.test.tab[2,])
+aspen.test.recall <- aspen.test.tab[2,2] / sum(aspen.test.tab[,2])
+aspen.test.specificity <- aspen.test.tab[1,1] / (aspen.test.tab[1,1] + aspen.test.tab[1,2])
+
+aspen.test.tab
+aspen.test.accuracy
+aspen.test.precision
+aspen.test.recall
+aspen.test.specificity
+
+douglas.test.tab <- table(forest.cover.data[-train,]$pred == "douglas_pred", forest.cover.data[-train,]$Cover_Type_Douglas_fir)
+douglas.test.accuracy <- (douglas.test.tab[1,1] + douglas.test.tab[2,2]) / nrow(forest.cover.data[-train,])
+douglas.test.precision <- douglas.test.tab[2,2] / sum(douglas.test.tab[2,])
+douglas.test.recall <- douglas.test.tab[2,2] / sum(douglas.test.tab[,2])
+douglas.test.specificity <- douglas.test.tab[1,1] / (douglas.test.tab[1,1] + douglas.test.tab[1,2])
+
+douglas.test.tab
+douglas.test.accuracy
+douglas.test.precision
+douglas.test.recall
+douglas.test.specificity
+
+krummholz.test.tab <- table(forest.cover.data[-train,]$pred == "krummholz_pred", forest.cover.data[-train,]$Cover_Type_Krummholz)
+krummholz.test.accuracy <- (krummholz.test.tab[1,1] + krummholz.test.tab[2,2]) / nrow(forest.cover.data[-train,])
+krummholz.test.precision <- krummholz.test.tab[2,2] / sum(krummholz.test.tab[2,])
+krummholz.test.recall <- krummholz.test.tab[2,2] / sum(krummholz.test.tab[,2])
+krummholz.test.specificity <- krummholz.test.tab[1,1] / (krummholz.test.tab[1,1] + krummholz.test.tab[1,2])
+
+krummholz.test.tab
+krummholz.test.accuracy
+krummholz.test.precision
+krummholz.test.recall
+krummholz.test.specificity
+
+spruce.fir.test.tab <- table(forest.cover.data[-train,]$pred == "spruce.fir_pred", forest.cover.data[-train,]$Cover_Type_Spruce_Fir)
+spruce.fir.test.accuracy <- (spruce.fir.test.tab[1,1] + spruce.fir.test.tab[2,2]) / nrow(forest.cover.data[-train,])
+spruce.fir.test.precision <- spruce.fir.test.tab[2,2] / sum(spruce.fir.test.tab[2,])
+spruce.fir.test.recall <- spruce.fir.test.tab[2,2] / sum(spruce.fir.test.tab[,2])
+spruce.fir.test.specificity <- spruce.fir.test.tab[1,1] / (spruce.fir.test.tab[1,1] + spruce.fir.test.tab[1,2])
+
+spruce.fir.test.tab
+spruce.fir.test.accuracy
+spruce.fir.test.precision
+spruce.fir.test.recall
+spruce.fir.test.specificity
