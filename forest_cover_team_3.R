@@ -1552,14 +1552,88 @@ print(paste("Average AUC for all prediction classes: ", round(auc_tot/auc_num,3)
 #
 
 #### MULTINOM LOGISTIC REGRESSION ####
+forest.cover.data$Cover_Type_1 <- ifelse((forest.cover.data$Cover_Type_Factor=="Spruce_Fir"),1,-1)
+forest.cover.data$Cover_Type_2 <- ifelse((forest.cover.data$Cover_Type_Factor=="Lodgepole_Pine"),1,-1)
+forest.cover.data$Cover_Type_3 <- ifelse((forest.cover.data$Cover_Type_Factor== "Ponderosa_Pine"),1,-1)
+forest.cover.data$Cover_Type_4 <- ifelse((forest.cover.data$Cover_Type_Factor=="Cottonwood_Willow"),1,-1)
+forest.cover.data$Cover_Type_5 <- ifelse((forest.cover.data$Cover_Type_Factor=="Aspen"),1,-1)
+forest.cover.data$Cover_Type_6 <- ifelse((forest.cover.data$Cover_Type_Factor=="Douglas_fir"),1,-1)
+forest.cover.data$Cover_Type_7 <- ifelse((forest.cover.data$Cover_Type_Factor=="Krummholz"),1,-1)
+forest.cover.data$ID<-seq.int(nrow(forest.cover.data)) # Add ID column to preserve row numbers
+
+# split data into training set and test set
+set.seed(465)
+train <- (sample(1:nrow(forest.cover.data),nrow(forest.cover.data)*0.70)) # 70% train / 30% test split
+plot(forest.cover.data[train,"Cover_Type_Factor"],main="unbalanced training data") # examine data
+
+train_balanced <- c()
+train_balanced <- as.data.frame(train_balanced)
+spruce.obs <- 10000
+lodgepole.obs <- 12500
+ponderosa.obs <- 2500
+cottonwood.obs <- 500
+aspen.obs <- 1500
+douglas.obs <- 2000
+krummholz.obs <- 2250
+x <- filter(forest.cover.data[train,],Cover_Type_1 ==1)
+x1 <- sample(x[,"ID"],spruce.obs) 
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+x <- filter(forest.cover.data[train,],Cover_Type_2 ==1)
+x1 <- sample(x[,"ID"],lodgepole.obs)
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+x <- filter(forest.cover.data[train,],Cover_Type_3 ==1)
+x1 <- sample(x[,"ID"],ponderosa.obs)
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+x <- filter(forest.cover.data[train,],Cover_Type_4 ==1)
+x1 <- sample(x[,"ID"],cottonwood.obs) # replace = T = sample with replacement because less than 2277 samples
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+x <- filter(forest.cover.data[train,],Cover_Type_5 ==1)
+x1 <- sample(x[,"ID"],aspen.obs) 
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+x <- filter(forest.cover.data[train,],Cover_Type_6 ==1)
+x1 <- sample(x[,"ID"],douglas.obs)
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+x <- filter(forest.cover.data[train,],Cover_Type_7 ==1)
+x1 <- sample(x[,"ID"],krummholz.obs)
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+forest.cover.data <- select(forest.cover.data,-ID)
+train_balanced <- as.integer(unlist(train_balanced))
+rm(x)
+rm(x1)
+
+plot(forest.cover.data[train_balanced,"Cover_Type_Factor"],main="balanced training data") # examine data
+table(forest.cover.data[train_balanced,"Cover_Type_Factor"]) # examine data
+
+# Diagnostics
+class(forest.cover.data[train_balanced,])
+dim(forest.cover.data[train_balanced,])
+# View(forest.cover.data[train_balanced,])
+names(forest.cover.data[train_balanced,])
+str(forest.cover.data[train_balanced,])
+
 continuous.predictors <- c("Elevation", "Aspect", "Slope", "Horizontal_Distance_To_Hydrology", "Vertical_Distance_To_Hydrology", "Horizontal_Distance_To_Roadways", "Hillshade_9am", "Hillshade_Noon", "Hillshade_3pm", "Horizontal_Distance_To_Fire_Points") 
 factor.predictors <- c("wilderness_area", "climate_zone", "geologic_zone")
-train <- (sample(1:nrow(forest.cover.data),nrow(forest.cover.data)*0.7))
+indicator.predictors <- c("wilderness_areaNeota_WA", "wilderness_areaComanche_Peak_WA", "wilderness_areaCache_la_Poudre_WA", "mountain_dry", "mountain", "montain_dry_and_mountain", "mountain_and_subalpine", "subalpine", "alpine", "glacial", "mixed_sedimentary", "igneous_and_metamorphic")
+binary.predictors <- c("Soil_Type2", "Soil_Type3", "Soil_Type4", "Soil_Type5", "Soil_Type6", "Soil_Type7", "Soil_Type8", "Soil_Type9", 
+                       "Soil_Type10", "Soil_Type11", "Soil_Type12", "Soil_Type13", "Soil_Type14", "Soil_Type15", "Soil_Type16", "Soil_Type17", "Soil_Type18", "Soil_Type19",
+                       "Soil_Type20", "Soil_Type21", "Soil_Type22", "Soil_Type23", "Soil_Type24", "Soil_Type25", "Soil_Type26", "Soil_Type27", "Soil_Type28", "Soil_Type29", 
+                       "Soil_Type30", "Soil_Type31", "Soil_Type32", "Soil_Type33", "Soil_Type34", "Soil_Type35", "Soil_Type36", "Soil_Type37", "Soil_Type38", "Soil_Type39", 
+                       "Soil_Type40")
+all.predictors <- c(continuous.predictors, factor.predictors, binary.predictors)
+
+
 # prep data to put into multinom function
-multinom.predictors <- c(continuous.predictors, factor.predictors)
+multinom.predictors <- c(continuous.predictors, indicator.predictors)
 multinom.predictors.rhs <- paste(multinom.predictors, collapse = "+")
 forest.cover.data$multinom.response <- relevel(forest.cover.data$Cover_Type_Factor, ref = "Spruce_Fir")
-multinom.model <- multinom(forest.cover.data[train,]$multinom.response ~ Elevation+Aspect+Slope+Horizontal_Distance_To_Hydrology+Vertical_Distance_To_Hydrology+Horizontal_Distance_To_Roadways+Hillshade_9am+Hillshade_Noon+Hillshade_3pm+Horizontal_Distance_To_Fire_Points+wilderness_area+climate_zone+geologic_zone, data = forest.cover.data[train,])
+multinom.model <- multinom(forest.cover.data[train_balanced,]$multinom.response ~ Elevation+Aspect+Slope+Horizontal_Distance_To_Hydrology+Vertical_Distance_To_Hydrology+Horizontal_Distance_To_Roadways+Hillshade_9am+Hillshade_Noon+Hillshade_3pm+Horizontal_Distance_To_Fire_Points+wilderness_area+climate_zone+geologic_zone, data = forest.cover.data[train_balanced,], maxit = 500)
 
 z.test <- summary(multinom.model)$coefficients / summary(multinom.model)$standard.errors
 #calculate p-values for each variable and each level of response
@@ -1570,9 +1644,8 @@ exp(coef(multinom.model))
 head(fitted(multinom.model))
 
 train.data <- forest.cover.data[train,]
-train.data$multinom.predict <- predict(multinom.model, newdata = train, "class")
+train.data$multinom.predict <- predict(multinom.model, newdata = train.data, "class")
 
-#See how multinom model performed on training data
 table(train.data$multinom.predict == "Spruce_Fir", train.data$multinom.response == "Spruce_Fir")
 table(train.data$multinom.predict == "Lodgepole_Pine", train.data$multinom.response == "Lodgepole_Pine")
 table(train.data$multinom.predict == "Ponderosa_Pine", train.data$multinom.response == "Ponderosa_Pine")
@@ -1580,3 +1653,15 @@ table(train.data$multinom.predict == "Cottonwood_Willow", train.data$multinom.re
 table(train.data$multinom.predict == "Aspen", train.data$multinom.response == "Aspen")
 table(train.data$multinom.predict == "Douglas_fir", train.data$multinom.response == "Douglas_fir")
 table(train.data$multinom.predict == "Krummholz", train.data$multinom.response == "Krummholz")
+
+# c("Spruce_Fir","Lodgepole_Pine","Ponderosa_Pine","Cottonwood_Willow","Aspen","Douglas_fir","Krummholz")
+multinom.cm <- table(train.data$multinom.predict == "Spruce_Fir", train.data$multinom.response == "Spruce_Fir")
+
+true.negative = multinom.cm[1,1]
+false.negative = multinom.cm[1,2] 
+false.positive = multinom.cm[2,1] 
+true.positive = multinom.cm[2,2]
+accuracy = (multinom.cm[1,1] + multinom.cm[2,2]) / nrow(train) 
+precision = multinom.cm[2,2] / sum(multinom.cm[,2])
+recall = multinom.cm[2,2] / sum(multinom.cm[,2])
+specificity = multinom.cm[1,1] / sum(multinom.cm[,1])
