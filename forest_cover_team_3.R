@@ -1086,9 +1086,11 @@ ________________________________________________________________________________
 	> table(seg.hc.avg.segment)
 _________________________________________________________________________________________________________________________________________
 _________________________________________________________________________________________________________________________________________
-####
-# Neural Net Model 
-####
+
+############################
+# BEGIN NEURAL NET MODEL SECTION
+############################
+
 require(lattice)
 require(latticeExtra)
 require(useful)
@@ -1104,13 +1106,116 @@ require(nnet)
 require(pROC)
 require(klaR)
 require(ROCR)
+require(plyr)
+require(reshape2)
 select<-dplyr::select #unmask select from dplyr due to MASS package
+multiclass_metrics <- function(x) {
+  
+  # multiclass_metrics()calculates 11 error metrics for a multiclass predictive model. The following metrics 
+  # are calculated from an N by N confusion matrix and repreent values for the entire confusion matrix. 
+  # Use confusionMatrix() to generate metrics for individual classes. 
+  # obs_total
+  # recall
+  # precision
+  # accuracy
+  # sensitivity
+  # specificity
+  # pos_pred_value
+  # neg_pred_value
+  # prevalence
+  # detection_rate
+  # accuracy_chance
+  # accuracy_model
+  # cohen's kappa
+  # 
+  # DEPENDENCIES
+  # caret() package
+  # 
+  # USAGE
+  # multiclass_metrics(x)
+  # where x is an N by N table confusion matrix having counts not percentages. 
+  # validate x has the appropriate format by running confusionMatrix(x)
+  
+  require(caret)
+  # Manual metrics
+  z<-confusionMatrix(x)
+  z<- z$table
+  
+  # construct confusion true/false matrix
+  z1 = data.frame(matrix(vector(), 0, 4,
+                         dimnames=list(c(), c("TP", "FP", "TN","FN"))),
+                  stringsAsFactors=F)
+  
+  for (i in 1:nrow(z)){
+    z1[i,1] = z[i,i] # true positive
+    z1[i,2] = sum(z[i,])-z1[i,1] # false positive
+    z1[i,3] = sum(z) - sum(z[i,]) - sum(z[,i]) + z1[i,1] # true negative  
+    z1[i,4] = sum(z[,i])-z1[i,1]  # false negative
+  }
+  
+  #construct totals matrix
+  z_totals = data.frame(matrix(vector(), 0, 7,))
+  
+  for (i in 1:nrow(z)){
+    z_totals[1,i] = sum(z[,i]) # column totals
+    z_totals[2,i] = sum(z[i,]) # row totals
+  }
+  
+  #calculate metrics
+  z1_metrics = data.frame(matrix(vector(), 0, 12,
+                                 dimnames=list(c(), c("obs_total", 
+                                                      "accuracy", 
+                                                      #"recall", 
+                                                      #"precision", 
+                                                      "sensitivity/recall", 
+                                                      "specificity", 
+                                                      "pos_pred_value/precision", 
+                                                      "neg_pred_value", 
+                                                      "prevalence", 
+                                                      "detection_rate",
+                                                      "balanced_accuracy",
+                                                      "accuracy_chance",
+                                                      "accuracy_model", 
+                                                      "cohen_kappa"))),
+                          stringsAsFactors=F)
+  
+  z1_metrics[1,1] = sum(z)
+  z1_metrics[1,2] = (sum(z1[,1])+sum(z1[,3]))/(z1_metrics[1,1]*nrow(z1))
+  #z1_metrics[1,2] = sum(z1[,1])/(sum(z1[,1])+sum(z1[,4]))
+  #z1_metrics[1,3] = sum(z1[,1])/(sum(z1[,1])+sum(z1[,2]))
+  z1_metrics[1,3] = sum(z1[,1])/z1_metrics[1,1]
+  z1_metrics[1,4] = sum(z1[,3])/(sum(z1[,3])+sum(z1[,2]))
+  z1_metrics[1,5] = sum(z1[,1])/z1_metrics[1,1]
+  z1_metrics[1,6] = sum(z1[,3])/(sum(z1[,3])+sum(z1[,4]))
+  z1_metrics[1,7] = z1_metrics[1,1]/z1_metrics[1,1]
+  z1_metrics[1,8] = sum(z1[,1])/z1_metrics[1,1]
+  z1_metrics[1,9] =  (z1_metrics[1,3]+z1_metrics[1,4])/2# balanced accuracy = (sensitivity+specificity)/2
+  
+  # calculate acuracy_chance
+  aa <- sum(z1[,1])
+  bb <- (
+    (z_totals[1,1]/sum(z))*z_totals[2,1] +
+      (z_totals[1,2]/sum(z))*z_totals[2,2] +  
+      (z_totals[1,3]/sum(z))*z_totals[2,3] +  
+      (z_totals[1,4]/sum(z))*z_totals[2,4] +
+      (z_totals[1,5]/sum(z))*z_totals[2,5] +  
+      (z_totals[1,6]/sum(z))*z_totals[2,6] +  
+      (z_totals[1,7]/sum(z))*z_totals[2,7])
+  
+  z1_metrics[1,10] =  bb/sum(z)
+  z1_metrics[1,11] =  aa/sum(z)
+  z1_metrics[1,12] = (aa-bb)/(sum(z)-bb)
+  
+  z1_metrics<-t(z1_metrics)
+  options(scipen = 10)
+  print(z1_metrics)
+}
+
 
 #####
 #Import data
 #####
 #forest.cover.data <- read.table(file="C:/Users/RS/Documents/Northwestern - Predictive Analytics/454 - Advanced Modeling Techniques/Group Project/covtype_data.txt", header=TRUE, stringsAsFactors=F, sep=",")
-
 forest.cover.data <- read.csv("~/R/covtype_data.txt", header=FALSE) # SSCC/Cyberduck location
 .libPaths( c( .libPaths(), "/sscc/opt/R-3.1.1/lib64/R/library") ) # SSCC/Cyberduck location
 backup<-forest.cover.data
@@ -1374,47 +1479,22 @@ set.seed(465)
 train=(sample(1:nrow(forest.cover.data),nrow(forest.cover.data)*0.70)) #original 70% train / 30% test split
 train=(sample(train,15938)) # if smaller sample is needed for computational complexity, take sample from training set. See: http://www.raosoft.com/samplesize.html
 
+
 #remove set variables where all observations have same value in training set. (note: necessary when indicator variables are used?)
 for (i in colnames(forest.cover.data[train,])) {
   ifelse(n_distinct(forest.cover.data[train,i])==1,forest.cover.data <- subset(forest.cover.data, select = -c(get(i))),forest.cover.data[train,] <- (forest.cover.data[train,]))
 }
 
-# # trim - outlier definition based on training data. Outlier trimming applied to training & test data.
-# for (i in colnames(forest.cover.data[sapply(forest.cover.data,(is.numeric))])) { 
-#   sd <- (sd(forest.cover.data[train,i])) # standard deviation 
-#   mean <- (mean(forest.cover.data[train,i])) # standard deviation
-#   outlier_high <- mean + 4*sd
-#   outlier_low <- mean - 4*sd
-#   forest.cover.data[,i] <- ifelse((forest.cover.data[,i] > outlier_high), outlier_high,
-#                          ifelse((forest.cover.data[,i]  < outlier_low), outlier_low, forest.cover.data[,i]))
-# }
-# Center training and test data. 
-# construct interaction variables (x*y) for all variable pairs. 
-var_names <- colnames(select(forest.cover.data,-Cover_Type_Factor)) # create a list of all variables excluding factor variables
-var_names <- combn(var_names,m=2) # combinations of all variable pairs
-var_names <- t(var_names) # transpose from wide to long data
 ##### 
 # MODEL FITTING - NEURAL NET (NN)
 #####
 #####
 ## NN data prep
 #####
-# drop respone variable factor variables (keep until now because factors needed for EDA)
-forest.cover.data <- select(forest.cover.data, -c( wilderness_area,climate_zone, geologic_zone, Soil_Type))
 
 # NN Preprocessing
 sum(apply(forest.cover.data[train,],2,function(x) sum(is.na(x)))) # verify no missing data. Neural nets rely on all observations.
 
-# Standardize data (mean = 0, sd = 1)
-# http://www.inside-r.org/node/86978
-for (i in 1:10) { # 10 numerical variables, others are binary.
-  sd <- sd(forest.cover.data[train,i]) #calculated std. deviation of training data
-  mean <- mean(forest.cover.data[train,i]) # calculate mean based on training data
-  ifelse(is.numeric(forest.cover.data[,i]), # center numeric data, do not change factor data.
-         forest.cover.data[,i] <- ((forest.cover.data[,i] - mean)/sd) # center train/test data based on training calculation
-         ,
-         forest.cover.data[,i] <<- forest.cover.data[,i]) 
-}
 
 #forest.cover.data <- backup
 
@@ -1422,10 +1502,387 @@ for (i in 1:10) { # 10 numerical variables, others are binary.
 # Fit NN model
 #####
 # fit NN
+set.seed(465)
 fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
-               repeats=20, 
-               size=5, 
-               decay=0.25,
+               repeats=10, 
+               size=12, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+
+#####
+# PCA ANALYSIS & Model fitting on PCA variables
+#####
+temp1 <- select(forest.cover.data,-Cover_Type_Factor) # temp data set for PCA without response variable
+temp1_pca = prcomp(temp1[train,]) # create PCA object
+
+pcaCharts <- function(x) {
+  x.var <- x$sdev ^ 2
+  x.pvar <- x.var/sum(x.var)
+  #print("proportions of variance:")
+  #print(x.pvar)
+  
+  par(mfrow=c(1,2))
+  plot(x.pvar,xlab="Principal component", ylab="Proportion of variance explained", ylim=c(0,1), type='b')
+  plot(cumsum(x.pvar),xlab="Principal component", ylab="Cumulative Proportion of variance explained", ylim=c(0,1), type='b')
+  #screeplot(x)
+  #screeplot(x,type="l")
+  par(mfrow=c(1,1))
+} # UDF for PCA plots (scree, cumulative variance)
+pcaCharts(temp1_pca)
+#screeplot(temp1_pca, type="lines",length(temp1_pca$sdev),main="scree plot")
+#biplot(temp1_pca,scale=0, cex=.7)
+
+temp1 <- predict(temp1_pca,temp1) # project PCA rotation onto all data.
+temp1 <-as.data.frame(temp1)
+temp1 <- cbind(temp1,forest.cover.data$Cover_Type_Factor)
+colnames(temp1)[colnames(temp1) == 'forest.cover.data$Cover_Type_Factor'] <- 'Cover_Type_Factor'
+backup <- forest.cover.data
+forest.cover.data<-temp1
+rm(temp1)
+
+#####
+#PCA
+#####
+
+#####
+# Fit NN model on PCA
+#####
+# fit NN
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8+PC9+PC10+PC11+PC12+PC13+PC14+PC15+PC16+PC17+PC18+PC19+PC20+
+                 PC21+PC22+PC23+PC24+PC25+PC26+PC27+PC28+PC29+PC30+PC31+PC32+PC33+PC34+PC35+PC36+PC37+PC38+PC39+PC40+
+                 PC41+PC42+PC43+PC44+PC45+PC46+PC47+PC48+PC49+PC50+PC51+PC52+PC53+PC54+PC55+PC56+PC57+PC58+PC59+PC60+
+                 PC61+PC62+PC63+PC64+PC65+PC66+PC67+PC68+PC69+PC70+PC71+PC72+PC73+PC74+PC75+PC76+PC77+PC78+PC79+PC80+
+                 PC81+PC82+PC83+PC84+PC85+PC86+PC87+PC88+PC89+PC90+PC91+PC92+PC93+PC94+PC95+PC96+PC97+PC98+PC99+PC100+
+                 PC101+PC102+PC103+PC104+PC105+PC106+PC107+PC108+PC109+PC110+PC111+PC112+PC113+PC114+PC115+PC116+PC117+PC118+PC119+PC120+
+                 PC121+PC122+PC123+PC124+PC125,
+               data=forest.cover.data[train,], 
+               repeats=10, 
+               size=7, #12 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# PCA ANALYSIS & Correlation Analysis
+#####
+x<-forest.cover.data[train,"Cover_Type_1"]
+y<-forest.cover.data.full[train,]
+z <- cor(y[,1:3486],x)
+z<-abs(z)
+z<-as.data.frame(z)
+z<-melt(as.matrix(z))
+z<- arrange(z,desc(value))
+z[1:30,]
+plot(z[1:30,"value"])
+
+x<-forest.cover.data[train,"Cover_Type_2"]
+y<-forest.cover.data.full[train,]
+z <- cor(y[,1:3486],x)
+z<-abs(z)
+z<-as.data.frame(z)
+z<-melt(as.matrix(z))
+z<- arrange(z,desc(value))
+z[1:30,]
+plot(z[1:30,"value"])
+
+x<-forest.cover.data[train,"Cover_Type_3"]
+y<-forest.cover.data.full[train,]
+z <- cor(y[,1:3486],x)
+z<-abs(z)
+z<-as.data.frame(z)
+z<-melt(as.matrix(z))
+z<- arrange(z,desc(value))
+z[1:30,]
+plot(z[1:30,"value"])
+
+x<-forest.cover.data[train,"Cover_Type_4"]
+y<-forest.cover.data.full[train,]
+z <- cor(y[,1:3486],x)
+z<-abs(z)
+z<-as.data.frame(z)
+z<-melt(as.matrix(z))
+z<- arrange(z,desc(value))
+z[1:30,]
+plot(z[1:30,"value"])
+
+x<-forest.cover.data[train,"Cover_Type_5"]
+y<-forest.cover.data.full[train,]
+z <- cor(y[,1:3486],x)
+z<-abs(z)
+z<-as.data.frame(z)
+z<-melt(as.matrix(z))
+z<- arrange(z,desc(value))
+z[1:30,]
+plot(z[1:30,"value"])
+
+x<-forest.cover.data[train,"Cover_Type_6"]
+y<-forest.cover.data.full[train,]
+z <- cor(y[,1:3486],x)
+z<-abs(z)
+z<-as.data.frame(z)
+z<-melt(as.matrix(z))
+z<- arrange(z,desc(value))
+z[1:30,]
+plot(z[1:30,"value"])
+
+x<-forest.cover.data[train,"Cover_Type_7"]
+y<-forest.cover.data.full[train,]
+z <- cor(y[,1:3486],x)
+z<-abs(z)
+z<-as.data.frame(z)
+z<-melt(as.matrix(z))
+z<- arrange(z,desc(value))
+z[1:30,]
+plot(z[1:30,"value"])
+
+#####
+# Fit NN model on PCA variables selected by correlation (top 30 each, duplicates removed. 171 total)
+#####
+
+# temp1 <- cbind(temp1,forest.cover.data$Cover_Type_Factor)
+# colnames(temp1)[colnames(temp1) == 'forest.cover.data$Cover_Type_Factor'] <- 'Cover_Type_Factor'
+# backup <- forest.cover.data
+# forest.cover.data<-temp1
+# rm(temp1)
+
+# fit NN
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~
+                 PC3398+PC44+PC64+PC47+PC3384+PC3385+PC68+PC63+PC18+PC7+PC20+PC62+PC3485+PC3162+PC2913+PC2456+PC69+
+                 PC48+PC2492+PC57+PC3393+PC2714+PC2563+PC3089+PC2455+PC3137+PC2591+PC1897+PC2921+PC103+PC1757+PC1728+
+                 PC1914+PC80+PC1682+PC71+PC2439+PC2147+PC2171+PC2722+PC2557+PC2398+PC1936+PC2476+PC2272+PC3019+PC1725+
+                 PC2118+PC1680+PC1744+PC1678+PC1617+PC1715+PC1714+PC2121+PC2770+PC1733+PC3398+PC2381+PC2459+PC2805+
+                 PC6+PC2437+PC2812+PC2908+PC3068+PC2727+PC2675+PC3085+PC3044+PC3164+PC2077+PC2142+PC1734+PC90+PC2129+
+                 PC1632+PC111+PC89+PC2064+PC1764+PC1691+PC157+PC2954+PC2700+PC2992+PC1672+PC2969+PC2899+PC1994+PC2253+
+                 PC1677+PC1954+PC2889+PC2245+PC2099+PC2970+PC2901+PC1941+PC2991+PC2134+PC2728+PC220+PC3004+PC79+PC49+
+                 PC107+PC2570+PC2898+PC2520+PC82+PC160+PC3177+PC2308+PC321+PC677+PC26+PC1413+PC3372+PC52+PC37+PC141+
+                 PC39+PC3036+PC2024+PC1811+PC2605+PC2412+PC3188+PC2667+PC2879+PC1625+PC2186+PC1942+PC1624+PC2442+PC3032+
+                 PC1801+PC2713+PC2205+PC2175+PC2648+PC1837+PC3222+PC22+PC1836+PC3276+PC2320+PC1622+PC2934+PC75+PC3422+
+                 PC2037+PC3404+PC60+PC25+PC2724+PC65+PC2823+PC3402+PC13+PC2696+PC58+PC2467+PC2588+PC3179+PC2395+PC95+
+                 PC2842+PC3291+PC51
+               ,
+               data=forest.cover.data[train,], 
+               repeats=10, 
+               size=5, #12,
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+#plot multiclass ROC curve
+#####
+aucs = c()
+auc_num <- 0
+auc_tot <- 0
+plot(x=NA, y=NA, xlim=c(0,1), ylim=c(0,1),
+     xlab='False Positive Rate',
+     ylab='True Positive Rate',
+     bty='n')
+legend("bottomright",cex=0.75,legend=levels(forest.cover.data$Cover_Type_Factor),text.col=seq_along(levels((forest.cover.data$Cover_Type_Factor)))+7)
+
+for (type.id in 1:7) {
+  #print(type.id)
+  lvls = levels(forest.cover.data[train,"Cover_Type_Factor"])
+  if ((n_distinct(forest.cover.data[train,"Cover_Type_Factor"] == lvls[type.id])) == 1) {  #skip predictions where values all the same. ROC curve will not plot.
+    next
+  } 
+  else
+  {
+    type = as.factor(forest.cover.data[-train,"Cover_Type_Factor"] == lvls[type.id])    
+    score = as.data.frame(pred2[,type.id])
+    actual.class = forest.cover.data[-train,"Cover_Type_Factor"] == lvls[type.id]
+    pred = prediction(score, actual.class)
+    nbperf = performance(pred, "tpr", "fpr")
+    
+    roc.x = unlist(nbperf@x.values)
+    roc.y = unlist(nbperf@y.values)
+    lines(roc.y ~ roc.x, col=type.id+7, lwd=2)
+    
+    nbauc = performance(pred, "auc")
+    nbauc = unlist(slot(nbauc, "y.values"))
+    aucs[type.id] = nbauc
+    print(paste("AUC for",lvls[type.id],"=",round(nbauc,3)))
+    
+    auc_tot <<- nbauc+auc_tot
+    auc_num <<- auc_num+1
+  }
+}
+
+lines(x=c(0,1), c(0,1))
+
+print(paste("Average AUC for all prediction classes: ", round(auc_tot/auc_num,3)))
+# mean(aucs) # AUC. calculate each individually. 
+# rm(auc_num)
+# rm(auc_tot)
+#
+#####
+# MODEL FITTING - BALANCED TRAINING DATA
+#####
+
+#####
+# Resample data from training data with balanced response variable classes
+#####
+set.seed(465)
+train=(sample(1:nrow(forest.cover.data),nrow(forest.cover.data)*0.70)) # 70% train / 30% test split
+plot(forest.cover.data[train,"Cover_Type_Factor"],main="unbalanced training data") # examine data
+table(forest.cover.data[train,"Cover_Type_Factor"]) # examine data
+
+forest.cover.data$ID<-seq.int(nrow(forest.cover.data)) # Add ID column to preserve row numbers
+
+train_balanced <- c()
+train_balanced <- as.data.frame(train_balanced)
+
+x <- filter(forest.cover.data[train,],Cover_Type_1 ==1)
+x1 <- sample(x[,"ID"],2000)
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+
+x <- filter(forest.cover.data[train,],Cover_Type_2 ==1)
+x1 <- sample(x[,"ID"],2000)
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+
+x <- filter(forest.cover.data[train,],Cover_Type_3 ==1)
+x1 <- sample(x[,"ID"],2000)
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+
+x <- filter(forest.cover.data[train,],Cover_Type_4 ==1)
+x1 <- sample(x[,"ID"],1926,replace=F) 
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+
+x <- filter(forest.cover.data[train,],Cover_Type_5 ==1)
+x1 <- sample(x[,"ID"],2000) 
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+
+x <- filter(forest.cover.data[train,],Cover_Type_6 ==1)
+x1 <- sample(x[,"ID"],2000)
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+
+x <- filter(forest.cover.data[train,],Cover_Type_7 ==1)
+x1 <- sample(x[,"ID"],2000)
+x1<-as.data.frame(x1)
+train_balanced <- rbind(train_balanced,x1)
+
+forest.cover.data <- select(forest.cover.data,-ID)
+train_balanced <- as.integer(unlist(train_balanced))
+rm(x)
+rm(x1)
+
+plot(forest.cover.data[train_balanced,"Cover_Type_Factor"],main="balanced training data") # examine data
+table(forest.cover.data[train_balanced,"Cover_Type_Factor"]) # examine data
+
+#####
+# Fit NN model on balanced training data
+#####
+# fit NN
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train_balanced,], 
+               repeats=10, 
+               size=12, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+
+#####
+# PCA ANALYSIS & Model fitting on  PCA variables (balanced data)
+#####
+temp1 <- select(forest.cover.data,-Cover_Type_Factor) # temp data set for PCA without response variable
+temp1_pca = prcomp(temp1[train_balanced,]) # create PCA object
+
+pcaCharts <- function(x) {
+  x.var <- x$sdev ^ 2
+  x.pvar <- x.var/sum(x.var)
+  #print("proportions of variance:")
+  #print(x.pvar)
+  
+  par(mfrow=c(1,2))
+  plot(x.pvar,xlab="Principal component", ylab="Proportion of variance explained", ylim=c(0,1), type='b')
+  plot(cumsum(x.pvar),xlab="Principal component", ylab="Cumulative Proportion of variance explained", ylim=c(0,1), type='b')
+  #screeplot(x)
+  #screeplot(x,type="l")
+  par(mfrow=c(1,1))
+} # UDF for PCA plots (scree, cumulative variance)
+pcaCharts(temp1_pca)
+#screeplot(temp1_pca, type="lines",length(temp1_pca$sdev),main="scree plot")
+#biplot(temp1_pca,scale=0, cex=.7)
+
+temp1 <- predict(temp1_pca,temp1) # project PCA rotation onto all data.
+temp1 <-as.data.frame(temp1)
+temp1 <- cbind(temp1,forest.cover.data$Cover_Type_Factor)
+colnames(temp1)[colnames(temp1) == 'forest.cover.data$Cover_Type_Factor'] <- 'Cover_Type_Factor'
+backup <- forest.cover.data
+forest.cover.data<-temp1
+rm(temp1)
+
+#####
+# Fit NN model on PCA (balanced data)
+#####
+# fit NN
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8+PC9+PC10+PC11+PC12+PC13+PC14+PC15+PC16+PC17+PC18+PC19+PC20+
+                 PC21+PC22+PC23+PC24+PC25+PC26+PC27+PC28+PC29+PC30+PC31+PC32+PC33+PC34+PC35+PC36+PC37+PC38+PC39+PC40+
+                 PC41+PC42+PC43+PC44+PC45+PC46+PC47+PC48+PC49+PC50+PC51+PC52+PC53+PC54+PC55+PC56+PC57+PC58+PC59+PC60+
+                 PC61+PC62+PC63+PC64+PC65+PC66+PC67+PC68+PC69+PC70+PC71+PC72+PC73+PC74+PC75+PC76+PC77+PC78+PC79+PC80+
+                 PC81+PC82+PC83+PC84+PC85+PC86+PC87+PC88+PC89+PC90+PC91+PC92+PC93+PC94+PC95+PC96+PC97+PC98+PC99+PC100+
+                 PC101+PC102+PC103+PC104+PC105+PC106+PC107+PC108+PC109+PC110+PC111+PC112+PC113+PC114+PC115+PC116+PC117+PC118+PC119+PC120+
+                 PC121+PC122+PC123+PC124+PC125
+               ,
+               data=forest.cover.data[train_balanced,], 
+               repeats=5, 
+               size=4, 
+               decay=0.10,
                bag=FALSE,
                linout=TRUE)
 pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
@@ -1437,6 +1894,36 @@ b <- forest.cover.data[-train,"Cover_Type_Factor"]
 l <- union(a, b)
 Table2 <- table(factor(a, l), factor(b, l))
 confusionMatrix(Table2)
+
+
+#####
+# ENSEMBLE PREDICTIONS
+#####
+
+# ensemble = c() # create a list of predictions to be used for ensembling
+# 
+# #ensemble[[X]] = pred2 # Note: must attach this code to end of each avNNet() model. Add X+1 for each model.
+# #####
+# # Ensemble Predictions
+# #####
+# 
+# # Sum predictions from each model together
+# ensemble.pred.probs = ensemble[[1]] + ensemble[[2]] + ensemble[[3]] + ensemble[[4]] + ensemble[[5]] + ensemble[[6]]
+# ensemble.pred <- colnames(ensemble.pred.probs)[max.col(ensemble.pred.probs,ties.method="first")] # choose the highest percentage item.
+# 
+# a <- as.factor(ensemble.pred)
+# b <- wine[,"Grower"]
+# l <- union(a, b)
+# Table2 <- table(factor(a, l), factor(b, l))
+# round(prop.table(Table2),3) # confusion table with percentages
+# confusionMatrix(Table2) #confusion matrix
+# round(multiclass_metrics(Table2),4)
+
+############################
+# END NEURAL NET MODEL SECTION
+############################
+
+
 
 #random forest model
 library(randomForest);
