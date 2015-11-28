@@ -1667,7 +1667,7 @@ recall = multinom.cm[2,2] / sum(multinom.cm[,2])
 specificity = multinom.cm[1,1] / sum(multinom.cm[,1])
 
 
-#### ENSEMBLE ####
+#### ENSEMBLE - Training set ####
 train.data$nn.predict <- predict(fit, forest.cover.data[train,])
 train.data$rf.predict <- predict(rf.forest.cover,forest.cover.data1[train,],type="class") # evaluate performance on test data. see ISLR p 326.
 columns.to.count <- c("rf.predict", "rf.predict", "multinom.predict")
