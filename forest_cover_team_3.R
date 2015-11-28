@@ -1681,7 +1681,8 @@ for (i in 1:length(response.levels)) {
   prediction.df[col.name] <- col.vals
 }
 
-prediction.df["ensemble.predict"] <- apply(prediction.df, 1, function(x) names(which.max(x[length(prediction.df)-6:length(prediction.df)])))
+# set column ensemble.predict value to the column name that has the max number of predictions
+prediction.df["ensemble.predict"] <- apply(prediction.df, 1, function(x) names(which.max(x[4:10])))
 prediction.df["actual.response"] <- train.data$Cover_Type_Factor
 
 table(prediction.df$ensemble.predict, prediction.df$actual.response)
