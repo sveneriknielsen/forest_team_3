@@ -1090,7 +1090,6 @@ ________________________________________________________________________________
 ############################
 # BEGIN NEURAL NET MODEL SECTION
 ############################
-
 require(lattice)
 require(latticeExtra)
 require(useful)
@@ -1211,11 +1210,10 @@ multiclass_metrics <- function(x) {
   print(z1_metrics)
 }
 
-
 #####
 #Import data
 #####
-#forest.cover.data <- read.table(file="C:/Users/RS/Documents/Northwestern - Predictive Analytics/454 - Advanced Modeling Techniques/Group Project/covtype_data.txt", header=TRUE, stringsAsFactors=F, sep=",")
+
 forest.cover.data <- read.csv("~/R/covtype_data.txt", header=FALSE) # SSCC/Cyberduck location
 .libPaths( c( .libPaths(), "/sscc/opt/R-3.1.1/lib64/R/library") ) # SSCC/Cyberduck location
 backup<-forest.cover.data
@@ -1479,29 +1477,13 @@ set.seed(465)
 train=(sample(1:nrow(forest.cover.data),nrow(forest.cover.data)*0.70)) #original 70% train / 30% test split
 train=(sample(train,15938)) # if smaller sample is needed for computational complexity, take sample from training set. See: http://www.raosoft.com/samplesize.html
 
-
-#remove set variables where all observations have same value in training set. (note: necessary when indicator variables are used?)
-for (i in colnames(forest.cover.data[train,])) {
-  ifelse(n_distinct(forest.cover.data[train,i])==1,forest.cover.data <- subset(forest.cover.data, select = -c(get(i))),forest.cover.data[train,] <- (forest.cover.data[train,]))
-}
-
-##### 
-# MODEL FITTING - NEURAL NET (NN)
-#####
-#####
-## NN data prep
-#####
-
-# NN Preprocessing
-sum(apply(forest.cover.data[train,],2,function(x) sum(is.na(x)))) # verify no missing data. Neural nets rely on all observations.
-
-
-#forest.cover.data <- backup
+# drop respone variable and factor variables (keep until now because factors needed for EDA)
+forest.cover.data <- select(forest.cover.data, -c(Cover_Type_1,Cover_Type_2,Cover_Type_3,Cover_Type_4,Cover_Type_5,Cover_Type_6,Cover_Type_7,wilderness_area,climate_zone, geologic_zone,Soil_Type))
 
 #####
-# Fit NN model
+# MODEL 1
 #####
-# fit NN
+
 set.seed(465)
 fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
                repeats=10, 
@@ -1521,10 +1503,501 @@ round(prop.table(Table2),3) # confusion table with percentages
 confusionMatrix(Table2)
 round(multiclass_metrics(Table2),4)
 
+#####
+# MODEL 2
+#####
+for (i in 1:10) { # 10 numerical variables, others are binary.
+  sd <- sd(forest.cover.data[train,i]) #calculated std. deviation of training data
+  mean <- mean(forest.cover.data[train,i]) # calculate mean based on training data
+  ifelse(is.numeric(forest.cover.data[,i]), # center numeric data, do not change factor data.
+         forest.cover.data[,i] <- ((forest.cover.data[,i] - mean)/sd) # center train/test data based on training calculation
+         ,
+         forest.cover.data[,i] <<- forest.cover.data[,i]) 
+}
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=12, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
 
 #####
-# PCA ANALYSIS & Model fitting on PCA variables
+# MODEL 3
 #####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=1, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 4
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=2, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 5
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=3, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 6
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=4, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 7
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=5, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 8
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=10, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 9
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=12, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 10
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=1, 
+               size=12, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 11
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=2, 
+               size=12, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 12
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=5, 
+               size=12, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 13
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=12, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 14
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=20, 
+               size=12, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 15
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=12, 
+               decay=0.10,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 16
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=12, 
+               decay=0.25,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 17
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=12, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 18
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=12, 
+               decay=0.75,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 19
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=12, 
+               decay=0.99,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 20
+#####
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=12, 
+               decay=0.50,
+               bag=TRUE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 21
+#####
+# trim - outlier definition based on training data. Outlier trimming applied to training & test data.
+for (i in colnames(forest.cover.data[sapply(forest.cover.data,(is.numeric))])) { 
+  sd <- (sd(forest.cover.data[train,i])) # standard deviation 
+  mean <- (mean(forest.cover.data[train,i])) # standard deviation
+  outlier_high <- mean + 4*sd
+  outlier_low <- mean - 4*sd
+  forest.cover.data[,i] <- ifelse((forest.cover.data[,i] > outlier_high), outlier_high,
+                                  ifelse((forest.cover.data[,i]  < outlier_low), outlier_low, forest.cover.data[,i]))
+}
+
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=12, 
+               decay=0.50,
+               bag=TRUE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 22
+#####
+# construct 2nd & 3rd degree polynomial variables from the 10 quantitative variables.
+for (i in colnames(forest.cover.data[train,1:10])){
+  forest.cover.data[paste0("poly2_",i)] <- I(forest.cover.data[,i]^2)
+  forest.cover.data[paste0("poly3_",i)] <- I(forest.cover.data[,i]^3)
+}
+
+# construct interaction variables (x*y) for all variable pairs. 
+var_names <- colnames(select(forest.cover.data,-Cover_Type_Factor)) # create a list of all variables excluding response variable andfactor variables
+var_names <- combn(var_names,m=2) # combinations of all variable pairs
+var_names <- t(var_names) # transpose from wide to long data
+#run loop through all variable pair combinations (redundancies removed (x*x) and no repeats (x*y, y*x))
+for (a in row(var_names)) {
+  forest.cover.data[paste0("inter_",var_names[a,1],"_",var_names[a,2])] <- I(forest.cover.data[,paste(var_names[a,1])] * forest.cover.data[,paste(var_names[a,2])])
+} 
+
+
 temp1 <- select(forest.cover.data,-Cover_Type_Factor) # temp data set for PCA without response variable
 temp1_pca = prcomp(temp1[train,]) # create PCA object
 
@@ -1553,13 +2026,6 @@ backup <- forest.cover.data
 forest.cover.data<-temp1
 rm(temp1)
 
-#####
-#PCA
-#####
-
-#####
-# Fit NN model on PCA
-#####
 # fit NN
 set.seed(465)
 fit  <- avNNet(Cover_Type_Factor~PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8+PC9+PC10+PC11+PC12+PC13+PC14+PC15+PC16+PC17+PC18+PC19+PC20+
@@ -1588,8 +2054,261 @@ confusionMatrix(Table2)
 round(multiclass_metrics(Table2),4)
 
 #####
-# PCA ANALYSIS & Correlation Analysis
+# MODEL 23
 #####
+
+forest.cover.data.full<-forest.cover.data
+forest.cover.data <- read.csv("~/R/covtype_data.txt", header=FALSE) # SSCC/Cyberduck location
+.libPaths( c( .libPaths(), "/sscc/opt/R-3.1.1/lib64/R/library") ) # SSCC/Cyberduck location
+backup<-forest.cover.data
+forest.cover.data<-backup
+
+names(forest.cover.data) <- c("Elevation", "Aspect", "Slope", "Hydrology_Horizontal_Distance", "Hydrology_Vertical_Distance",
+                              "Roadways_Horizontal_Distance", "Hillshade_9am", "Hillshade_Noon", "Hillshade_3pm", "Fire_Points_Horizontal_Distance",
+                              "WA_Rawah", "WA_Neota", "WA_Comanche_Peak", "WA_Cache_la_Poudre", "Soil_Type_1",
+                              "Soil_Type_2","Soil_Type_3", "Soil_Type_4", "Soil_Type_5", "Soil_Type_6",
+                              "Soil_Type_7", "Soil_Type_8", "Soil_Type_9", "Soil_Type_10", "Soil_Type_11",
+                              "Soil_Type_12", "Soil_Type_13", "Soil_Type_14", "Soil_Type_15", "Soil_Type_16",
+                              "Soil_Type_17", "Soil_Type_18", "Soil_Type_19", "Soil_Type_20", "Soil_Type_21",
+                              "Soil_Type_22", "Soil_Type_23", "Soil_Type_24", "Soil_Type_25", "Soil_Type_26",
+                              "Soil_Type_27", "Soil_Type_28", "Soil_Type_29", "Soil_Type_30", "Soil_Type_31",
+                              "Soil_Type_32", "Soil_Type_33", "Soil_Type_34", "Soil_Type_35", "Soil_Type_36",
+                              "Soil_Type_37", "Soil_Type_38", "Soil_Type_39", "Soil_Type_40", "Cover_Type")
+
+# Create variables for Cover_TYpe
+forest.cover.data$Cover_Type_1 <- ifelse((forest.cover.data$Cover_Type==1),1,-1)
+forest.cover.data$Cover_Type_2 <- ifelse((forest.cover.data$Cover_Type==2),1,-1)
+forest.cover.data$Cover_Type_3 <- ifelse((forest.cover.data$Cover_Type==3),1,-1)
+forest.cover.data$Cover_Type_4 <- ifelse((forest.cover.data$Cover_Type==4),1,-1)
+forest.cover.data$Cover_Type_5 <- ifelse((forest.cover.data$Cover_Type==5),1,-1)
+forest.cover.data$Cover_Type_6 <- ifelse((forest.cover.data$Cover_Type==6),1,-1)
+forest.cover.data$Cover_Type_7 <- ifelse((forest.cover.data$Cover_Type==7),1,-1)
+
+# Create Cover_Type_Factor 
+forest.cover.data$Cover_Type_Factor <- factor(forest.cover.data$Cover_Type,levels=c(1,2,3,4,5,6,7),
+                                              labels=c("Spruce_Fir","Logdepole_Pine","Ponderosa_Pine","Cottonwood_Willow","Aspen","Douglas-fir","Krummholz"))
+
+# drop Cover_Type from dataset because it is an integer variable and we now have cover type dummy variables & factor variable.
+forest.cover.data <- select(forest.cover.data, -c(Cover_Type)) 
+
+# Create variables for wilderness_area
+forest.cover.data$wilderness_area <- ifelse((forest.cover.data$WA_Rawah==1),1,
+                                            ifelse((forest.cover.data$WA_Neota==1),2,
+                                                   ifelse((forest.cover.data$WA_Comanche_Peak==1),3,
+                                                          ifelse((forest.cover.data$WA_Cache_la_Poudre==1),4,-1))))
+
+forest.cover.data$wilderness_area <- factor(forest.cover.data$wilderness_area,levels=c(1,2,3,4),labels=c("Rawah","Neota","Comanche_Peak","Cache_la_Poudre"))
+
+forest.cover.data$WA_Rawah <- ifelse((forest.cover.data$WA_Rawah==1),1,-1)
+forest.cover.data$WA_Neota <- ifelse((forest.cover.data$WA_Neota==1),1,-1)
+forest.cover.data$WA_Comanche_Peak <- ifelse((forest.cover.data$WA_Comanche_Peak==1),1,-1)
+forest.cover.data$WA_Cache_la_Poudre <- ifelse((forest.cover.data$WA_Cache_la_Poudre==1),1,-1)
+
+# Create variables for climate_zone
+forest.cover.data$climate_zone <- ifelse((forest.cover.data$Soil_Type_1==1),2,
+                                         ifelse((forest.cover.data$Soil_Type_2==1),2,
+                                                ifelse((forest.cover.data$Soil_Type_3==1),2,
+                                                       ifelse((forest.cover.data$Soil_Type_4==1),2,
+                                                              ifelse((forest.cover.data$Soil_Type_5==1),2,
+                                                                     ifelse((forest.cover.data$Soil_Type_6==1),2,
+                                                                            ifelse((forest.cover.data$Soil_Type_7==1),3,
+                                                                                   ifelse((forest.cover.data$Soil_Type_8==1),3,
+                                                                                          ifelse((forest.cover.data$Soil_Type_9==1),4,
+                                                                                                 ifelse((forest.cover.data$Soil_Type_10==1),4,
+                                                                                                        ifelse((forest.cover.data$Soil_Type_11==1),4,
+                                                                                                               ifelse((forest.cover.data$Soil_Type_12==1),4,
+                                                                                                                      ifelse((forest.cover.data$Soil_Type_13==1),4,
+                                                                                                                             ifelse((forest.cover.data$Soil_Type_14==1),5,
+                                                                                                                                    ifelse((forest.cover.data$Soil_Type_15==1),5,
+                                                                                                                                           ifelse((forest.cover.data$Soil_Type_16==1),6,
+                                                                                                                                                  ifelse((forest.cover.data$Soil_Type_17==1),6,
+                                                                                                                                                         ifelse((forest.cover.data$Soil_Type_18==1),6,
+                                                                                                                                                                ifelse((forest.cover.data$Soil_Type_19==1),7,
+                                                                                                                                                                       ifelse((forest.cover.data$Soil_Type_20==1),7,
+                                                                                                                                                                              ifelse((forest.cover.data$Soil_Type_21==1),7,
+                                                                                                                                                                                     ifelse((forest.cover.data$Soil_Type_22==1),7,
+                                                                                                                                                                                            ifelse((forest.cover.data$Soil_Type_23==1),7,
+                                                                                                                                                                                                   ifelse((forest.cover.data$Soil_Type_24==1),7,
+                                                                                                                                                                                                          ifelse((forest.cover.data$Soil_Type_25==1),7,
+                                                                                                                                                                                                                 ifelse((forest.cover.data$Soil_Type_26==1),7,
+                                                                                                                                                                                                                        ifelse((forest.cover.data$Soil_Type_27==1),7,
+                                                                                                                                                                                                                               ifelse((forest.cover.data$Soil_Type_28==1),7,
+                                                                                                                                                                                                                                      ifelse((forest.cover.data$Soil_Type_29==1),7,
+                                                                                                                                                                                                                                             ifelse((forest.cover.data$Soil_Type_30==1),7,
+                                                                                                                                                                                                                                                    ifelse((forest.cover.data$Soil_Type_31==1),7,
+                                                                                                                                                                                                                                                           ifelse((forest.cover.data$Soil_Type_32==1),7,
+                                                                                                                                                                                                                                                                  ifelse((forest.cover.data$Soil_Type_33==1),7,
+                                                                                                                                                                                                                                                                         ifelse((forest.cover.data$Soil_Type_34==1),7,
+                                                                                                                                                                                                                                                                                ifelse((forest.cover.data$Soil_Type_35==1),8,
+                                                                                                                                                                                                                                                                                       ifelse((forest.cover.data$Soil_Type_36==1),8,
+                                                                                                                                                                                                                                                                                              ifelse((forest.cover.data$Soil_Type_37==1),8,
+                                                                                                                                                                                                                                                                                                     ifelse((forest.cover.data$Soil_Type_38==1),8,
+                                                                                                                                                                                                                                                                                                            ifelse((forest.cover.data$Soil_Type_39==1),8,
+                                                                                                                                                                                                                                                                                                                   ifelse((forest.cover.data$Soil_Type_40==1),8,0))))))))))))))))))))))))))))))))))))))))
+
+forest.cover.data$climate_zone_2 <- ifelse((forest.cover.data$climate_zone==2),1,-1)
+forest.cover.data$climate_zone_3 <- ifelse((forest.cover.data$climate_zone==3),1,-1)
+forest.cover.data$climate_zone_4 <- ifelse((forest.cover.data$climate_zone==4),1,-1)
+forest.cover.data$climate_zone_5 <- ifelse((forest.cover.data$climate_zone==5),1,-1)
+forest.cover.data$climate_zone_6 <- ifelse((forest.cover.data$climate_zone==6),1,-1)
+forest.cover.data$climate_zone_7 <- ifelse((forest.cover.data$climate_zone==7),1,-1)
+forest.cover.data$climate_zone_8 <- ifelse((forest.cover.data$climate_zone==8),1,-1)
+forest.cover.data$climate_zone <- factor(forest.cover.data$climate_zone,levels=c(2,3,4,5,6,7,8),labels=c("lower_mountain", "mountain_dry", "mountain", "montain_dry_and_mountain", "mountain_and_subalpine", "subalpine","alpine"))               
+
+# create variables for geologic zone
+forest.cover.data$geologic_zone <- ifelse((forest.cover.data$Soil_Type_1==1),2,
+                                          ifelse((forest.cover.data$Soil_Type_2==1),7,
+                                                 ifelse((forest.cover.data$Soil_Type_3==1),7,
+                                                        ifelse((forest.cover.data$Soil_Type_4==1),7,
+                                                               ifelse((forest.cover.data$Soil_Type_5==1),7,
+                                                                      ifelse((forest.cover.data$Soil_Type_6==1),7,
+                                                                             ifelse((forest.cover.data$Soil_Type_7==1),5,
+                                                                                    ifelse((forest.cover.data$Soil_Type_8==1),5,
+                                                                                           ifelse((forest.cover.data$Soil_Type_9==1),2,
+                                                                                                  ifelse((forest.cover.data$Soil_Type_10==1),7,
+                                                                                                         ifelse((forest.cover.data$Soil_Type_11==1),7,
+                                                                                                                ifelse((forest.cover.data$Soil_Type_12==1),7,
+                                                                                                                       ifelse((forest.cover.data$Soil_Type_13==1),7,
+                                                                                                                              ifelse((forest.cover.data$Soil_Type_14==1),1,
+                                                                                                                                     ifelse((forest.cover.data$Soil_Type_15==1),1,
+                                                                                                                                            ifelse((forest.cover.data$Soil_Type_16==1),1,
+                                                                                                                                                   ifelse((forest.cover.data$Soil_Type_17==1),1,
+                                                                                                                                                          ifelse((forest.cover.data$Soil_Type_18==1),7,
+                                                                                                                                                                 ifelse((forest.cover.data$Soil_Type_19==1),1,
+                                                                                                                                                                        ifelse((forest.cover.data$Soil_Type_20==1),1,
+                                                                                                                                                                               ifelse((forest.cover.data$Soil_Type_21==1),1,
+                                                                                                                                                                                      ifelse((forest.cover.data$Soil_Type_22==1),2,
+                                                                                                                                                                                             ifelse((forest.cover.data$Soil_Type_23==1),2,
+                                                                                                                                                                                                    ifelse((forest.cover.data$Soil_Type_24==1),7,
+                                                                                                                                                                                                           ifelse((forest.cover.data$Soil_Type_25==1),7,
+                                                                                                                                                                                                                  ifelse((forest.cover.data$Soil_Type_26==1),7,
+                                                                                                                                                                                                                         ifelse((forest.cover.data$Soil_Type_27==1),7,
+                                                                                                                                                                                                                                ifelse((forest.cover.data$Soil_Type_28==1),7,
+                                                                                                                                                                                                                                       ifelse((forest.cover.data$Soil_Type_29==1),7,
+                                                                                                                                                                                                                                              ifelse((forest.cover.data$Soil_Type_30==1),7,
+                                                                                                                                                                                                                                                     ifelse((forest.cover.data$Soil_Type_31==1),7,
+                                                                                                                                                                                                                                                            ifelse((forest.cover.data$Soil_Type_32==1),7,
+                                                                                                                                                                                                                                                                   ifelse((forest.cover.data$Soil_Type_33==1),7,
+                                                                                                                                                                                                                                                                          ifelse((forest.cover.data$Soil_Type_34==1),7,
+                                                                                                                                                                                                                                                                                 ifelse((forest.cover.data$Soil_Type_35==1),7,
+                                                                                                                                                                                                                                                                                        ifelse((forest.cover.data$Soil_Type_36==1),7,
+                                                                                                                                                                                                                                                                                               ifelse((forest.cover.data$Soil_Type_37==1),7,
+                                                                                                                                                                                                                                                                                                      ifelse((forest.cover.data$Soil_Type_38==1),7,
+                                                                                                                                                                                                                                                                                                             ifelse((forest.cover.data$Soil_Type_39==1),7,
+                                                                                                                                                                                                                                                                                                                    ifelse((forest.cover.data$Soil_Type_40==1),7,-1))))))))))))))))))))))))))))))))))))))))
+forest.cover.data$geologic_zone_1 <- ifelse((forest.cover.data$geologic_zone==1),1,-1)
+forest.cover.data$geologic_zone_2 <- ifelse((forest.cover.data$geologic_zone==2),1,-1)
+forest.cover.data$geologic_zone_5 <- ifelse((forest.cover.data$geologic_zone==5),1,-1)
+forest.cover.data$geologic_zone_7 <- ifelse((forest.cover.data$geologic_zone==7),1,-1) 
+
+forest.cover.data$geologic_zone <- factor(forest.cover.data$geologic_zone,levels=c(1,2,5,7,0),labels=c("alluvium", "glacial", "mixed_sedimentary", "igneous_and_metamorphic", "missing")) 
+
+## remove variables that have been converted into factors
+#forest.cover.data <- select(forest.cover.data, -c(WA_Rawah,WA_Neota,WA_Comanche_Peak,WA_Cache_la_Poudre)) 
+
+forest.cover.data$Soil_Type <- ifelse((forest.cover.data$Soil_Type_1==1),1,
+                                      ifelse((forest.cover.data$Soil_Type_2==1),2,
+                                             ifelse((forest.cover.data$Soil_Type_3==1),3,
+                                                    ifelse((forest.cover.data$Soil_Type_4==1),4,
+                                                           ifelse((forest.cover.data$Soil_Type_5==1),5,
+                                                                  ifelse((forest.cover.data$Soil_Type_6==1),6,
+                                                                         ifelse((forest.cover.data$Soil_Type_7==1),7,
+                                                                                ifelse((forest.cover.data$Soil_Type_8==1),8,
+                                                                                       ifelse((forest.cover.data$Soil_Type_9==1),9,
+                                                                                              ifelse((forest.cover.data$Soil_Type_10==1),10,
+                                                                                                     ifelse((forest.cover.data$Soil_Type_11==1),11,
+                                                                                                            ifelse((forest.cover.data$Soil_Type_12==1),12,
+                                                                                                                   ifelse((forest.cover.data$Soil_Type_13==1),13,
+                                                                                                                          ifelse((forest.cover.data$Soil_Type_14==1),14,
+                                                                                                                                 ifelse((forest.cover.data$Soil_Type_15==1),15,
+                                                                                                                                        ifelse((forest.cover.data$Soil_Type_16==1),16,
+                                                                                                                                               ifelse((forest.cover.data$Soil_Type_17==1),17,
+                                                                                                                                                      ifelse((forest.cover.data$Soil_Type_18==1),18,
+                                                                                                                                                             ifelse((forest.cover.data$Soil_Type_19==1),19,
+                                                                                                                                                                    ifelse((forest.cover.data$Soil_Type_20==1),20,
+                                                                                                                                                                           ifelse((forest.cover.data$Soil_Type_21==1),21,
+                                                                                                                                                                                  ifelse((forest.cover.data$Soil_Type_22==1),22,
+                                                                                                                                                                                         ifelse((forest.cover.data$Soil_Type_23==1),23,
+                                                                                                                                                                                                ifelse((forest.cover.data$Soil_Type_24==1),24,
+                                                                                                                                                                                                       ifelse((forest.cover.data$Soil_Type_25==1),25,
+                                                                                                                                                                                                              ifelse((forest.cover.data$Soil_Type_26==1),26,
+                                                                                                                                                                                                                     ifelse((forest.cover.data$Soil_Type_27==1),27,
+                                                                                                                                                                                                                            ifelse((forest.cover.data$Soil_Type_28==1),28,
+                                                                                                                                                                                                                                   ifelse((forest.cover.data$Soil_Type_29==1),29,
+                                                                                                                                                                                                                                          ifelse((forest.cover.data$Soil_Type_30==1),30,
+                                                                                                                                                                                                                                                 ifelse((forest.cover.data$Soil_Type_31==1),31,
+                                                                                                                                                                                                                                                        ifelse((forest.cover.data$Soil_Type_32==1),32,
+                                                                                                                                                                                                                                                               ifelse((forest.cover.data$Soil_Type_33==1),33,
+                                                                                                                                                                                                                                                                      ifelse((forest.cover.data$Soil_Type_34==1),34,
+                                                                                                                                                                                                                                                                             ifelse((forest.cover.data$Soil_Type_35==1),35,
+                                                                                                                                                                                                                                                                                    ifelse((forest.cover.data$Soil_Type_36==1),36,
+                                                                                                                                                                                                                                                                                           ifelse((forest.cover.data$Soil_Type_37==1),37,
+                                                                                                                                                                                                                                                                                                  ifelse((forest.cover.data$Soil_Type_38==1),38,
+                                                                                                                                                                                                                                                                                                         ifelse((forest.cover.data$Soil_Type_39==1),39,
+                                                                                                                                                                                                                                                                                                                ifelse((forest.cover.data$Soil_Type_40==1),40,-1))))))))))))))))))))))))))))))))))))))))
+
+forest.cover.data$Soil_Type<-factor(forest.cover.data$Soil_Type,levels=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,0),labels=c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","missing")) # convert to factor
+
+# forest.cover.data <- select(forest.cover.data, -c(Soil_Type_1,Soil_Type_2,Soil_Type_3,Soil_Type_4,Soil_Type_5,Soil_Type_6,
+#                                                   Soil_Type_7,Soil_Type_8,Soil_Type_9,Soil_Type_10,Soil_Type_11,Soil_Type_12,
+#                                                   Soil_Type_13,Soil_Type_14,Soil_Type_15,Soil_Type_16,Soil_Type_17,Soil_Type_18,
+#                                                   Soil_Type_19,Soil_Type_20,Soil_Type_21,Soil_Type_22,Soil_Type_23,Soil_Type_24,
+#                                                   Soil_Type_25,Soil_Type_26,Soil_Type_27,Soil_Type_28,Soil_Type_29,Soil_Type_30,
+#                                                   Soil_Type_31,Soil_Type_32,Soil_Type_33,Soil_Type_34,Soil_Type_35,Soil_Type_36,
+#                                                   Soil_Type_37,Soil_Type_38,Soil_Type_39,Soil_Type_40)) #remove variables that have been converted into factors
+
+# change Soil_Type_X binary values from (0,1) to (-1,1) to make variable centering more efficient.
+forest.cover.data$Soil_Type_1 <- ifelse((forest.cover.data$Soil_Type_1==0),-1,forest.cover.data$Soil_Type_1)
+forest.cover.data$Soil_Type_2 <- ifelse((forest.cover.data$Soil_Type_2==0),-1,forest.cover.data$Soil_Type_2)
+forest.cover.data$Soil_Type_3 <- ifelse((forest.cover.data$Soil_Type_3==0),-1,forest.cover.data$Soil_Type_3)
+forest.cover.data$Soil_Type_4 <- ifelse((forest.cover.data$Soil_Type_4==0),-1,forest.cover.data$Soil_Type_4)
+forest.cover.data$Soil_Type_5 <- ifelse((forest.cover.data$Soil_Type_5==0),-1,forest.cover.data$Soil_Type_5)
+forest.cover.data$Soil_Type_6 <- ifelse((forest.cover.data$Soil_Type_6==0),-1,forest.cover.data$Soil_Type_6)
+forest.cover.data$Soil_Type_7 <- ifelse((forest.cover.data$Soil_Type_7==0),-1,forest.cover.data$Soil_Type_7)
+forest.cover.data$Soil_Type_8 <- ifelse((forest.cover.data$Soil_Type_8==0),-1,forest.cover.data$Soil_Type_8)
+forest.cover.data$Soil_Type_9 <- ifelse((forest.cover.data$Soil_Type_9==0),-1,forest.cover.data$Soil_Type_9)
+forest.cover.data$Soil_Type_10 <- ifelse((forest.cover.data$Soil_Type_10==0),-1,forest.cover.data$Soil_Type_10)
+forest.cover.data$Soil_Type_11 <- ifelse((forest.cover.data$Soil_Type_11==0),-1,forest.cover.data$Soil_Type_11)
+forest.cover.data$Soil_Type_12 <- ifelse((forest.cover.data$Soil_Type_12==0),-1,forest.cover.data$Soil_Type_12)
+forest.cover.data$Soil_Type_13 <- ifelse((forest.cover.data$Soil_Type_13==0),-1,forest.cover.data$Soil_Type_13)
+forest.cover.data$Soil_Type_14 <- ifelse((forest.cover.data$Soil_Type_14==0),-1,forest.cover.data$Soil_Type_14)
+forest.cover.data$Soil_Type_15 <- ifelse((forest.cover.data$Soil_Type_15==0),-1,forest.cover.data$Soil_Type_15)
+forest.cover.data$Soil_Type_16 <- ifelse((forest.cover.data$Soil_Type_16==0),-1,forest.cover.data$Soil_Type_16)
+forest.cover.data$Soil_Type_17 <- ifelse((forest.cover.data$Soil_Type_17==0),-1,forest.cover.data$Soil_Type_17)
+forest.cover.data$Soil_Type_18 <- ifelse((forest.cover.data$Soil_Type_18==0),-1,forest.cover.data$Soil_Type_18)
+forest.cover.data$Soil_Type_19 <- ifelse((forest.cover.data$Soil_Type_19==0),-1,forest.cover.data$Soil_Type_19)
+forest.cover.data$Soil_Type_20 <- ifelse((forest.cover.data$Soil_Type_20==0),-1,forest.cover.data$Soil_Type_20)
+forest.cover.data$Soil_Type_21 <- ifelse((forest.cover.data$Soil_Type_21==0),-1,forest.cover.data$Soil_Type_21)
+forest.cover.data$Soil_Type_22 <- ifelse((forest.cover.data$Soil_Type_22==0),-1,forest.cover.data$Soil_Type_22)
+forest.cover.data$Soil_Type_23 <- ifelse((forest.cover.data$Soil_Type_23==0),-1,forest.cover.data$Soil_Type_23)
+forest.cover.data$Soil_Type_24 <- ifelse((forest.cover.data$Soil_Type_24==0),-1,forest.cover.data$Soil_Type_24)
+forest.cover.data$Soil_Type_25 <- ifelse((forest.cover.data$Soil_Type_25==0),-1,forest.cover.data$Soil_Type_25)
+forest.cover.data$Soil_Type_26 <- ifelse((forest.cover.data$Soil_Type_26==0),-1,forest.cover.data$Soil_Type_26)
+forest.cover.data$Soil_Type_27 <- ifelse((forest.cover.data$Soil_Type_27==0),-1,forest.cover.data$Soil_Type_27)
+forest.cover.data$Soil_Type_28 <- ifelse((forest.cover.data$Soil_Type_28==0),-1,forest.cover.data$Soil_Type_28)
+forest.cover.data$Soil_Type_29 <- ifelse((forest.cover.data$Soil_Type_29==0),-1,forest.cover.data$Soil_Type_29)
+forest.cover.data$Soil_Type_30 <- ifelse((forest.cover.data$Soil_Type_30==0),-1,forest.cover.data$Soil_Type_30)
+forest.cover.data$Soil_Type_31 <- ifelse((forest.cover.data$Soil_Type_31==0),-1,forest.cover.data$Soil_Type_31)
+forest.cover.data$Soil_Type_32 <- ifelse((forest.cover.data$Soil_Type_32==0),-1,forest.cover.data$Soil_Type_32)
+forest.cover.data$Soil_Type_33 <- ifelse((forest.cover.data$Soil_Type_33==0),-1,forest.cover.data$Soil_Type_33)
+forest.cover.data$Soil_Type_34 <- ifelse((forest.cover.data$Soil_Type_34==0),-1,forest.cover.data$Soil_Type_34)
+forest.cover.data$Soil_Type_35 <- ifelse((forest.cover.data$Soil_Type_35==0),-1,forest.cover.data$Soil_Type_35)
+forest.cover.data$Soil_Type_36 <- ifelse((forest.cover.data$Soil_Type_36==0),-1,forest.cover.data$Soil_Type_36)
+forest.cover.data$Soil_Type_37 <- ifelse((forest.cover.data$Soil_Type_37==0),-1,forest.cover.data$Soil_Type_37)
+forest.cover.data$Soil_Type_38 <- ifelse((forest.cover.data$Soil_Type_38==0),-1,forest.cover.data$Soil_Type_38)
+forest.cover.data$Soil_Type_39 <- ifelse((forest.cover.data$Soil_Type_39==0),-1,forest.cover.data$Soil_Type_39)
+forest.cover.data$Soil_Type_40 <- ifelse((forest.cover.data$Soil_Type_40==0),-1,forest.cover.data$Soil_Type_40)
+
+
+# if necessary due to computational limitations
+# sample the training data set to perform EDA
+#  dataset = 581,011 observations. the following script takes several hours to run on the full dataset. 
+# 16,127 sample size based on 99% confidence interval, 1% error margin 
+# See: http://www.raosoft.com/samplesize.html
+#forest.cover.data <- forest.cover.data[sample(nrow(forest.cover.data), 16127, replace = FALSE, prob = NULL),]
+
+ 
+
 x<-forest.cover.data[train,"Cover_Type_1"]
 y<-forest.cover.data.full[train,]
 z <- cor(y[,1:3486],x)
@@ -1660,16 +2379,8 @@ z<- arrange(z,desc(value))
 z[1:30,]
 plot(z[1:30,"value"])
 
-#####
-# Fit NN model on PCA variables selected by correlation (top 30 each, duplicates removed. 171 total)
-#####
-
-# temp1 <- cbind(temp1,forest.cover.data$Cover_Type_Factor)
-# colnames(temp1)[colnames(temp1) == 'forest.cover.data$Cover_Type_Factor'] <- 'Cover_Type_Factor'
-# backup <- forest.cover.data
-# forest.cover.data<-temp1
-# rm(temp1)
-
+forest.cover.data<-forest.cover.data.full
+rm(forest.cover.data.full)
 # fit NN
 set.seed(465)
 fit  <- avNNet(Cover_Type_Factor~
@@ -1705,59 +2416,12 @@ confusionMatrix(Table2)
 round(multiclass_metrics(Table2),4)
 
 #####
-#plot multiclass ROC curve
+# MODEL 24
 #####
-aucs = c()
-auc_num <- 0
-auc_tot <- 0
-plot(x=NA, y=NA, xlim=c(0,1), ylim=c(0,1),
-     xlab='False Positive Rate',
-     ylab='True Positive Rate',
-     bty='n')
-legend("bottomright",cex=0.75,legend=levels(forest.cover.data$Cover_Type_Factor),text.col=seq_along(levels((forest.cover.data$Cover_Type_Factor)))+7)
+# user will need to reload forest_cover data set to access "Cover_Type_XX" variables.
+# entire code is not repasted for sake of parsimony. 
 
-for (type.id in 1:7) {
-  #print(type.id)
-  lvls = levels(forest.cover.data[train,"Cover_Type_Factor"])
-  if ((n_distinct(forest.cover.data[train,"Cover_Type_Factor"] == lvls[type.id])) == 1) {  #skip predictions where values all the same. ROC curve will not plot.
-    next
-  } 
-  else
-  {
-    type = as.factor(forest.cover.data[-train,"Cover_Type_Factor"] == lvls[type.id])    
-    score = as.data.frame(pred2[,type.id])
-    actual.class = forest.cover.data[-train,"Cover_Type_Factor"] == lvls[type.id]
-    pred = prediction(score, actual.class)
-    nbperf = performance(pred, "tpr", "fpr")
-    
-    roc.x = unlist(nbperf@x.values)
-    roc.y = unlist(nbperf@y.values)
-    lines(roc.y ~ roc.x, col=type.id+7, lwd=2)
-    
-    nbauc = performance(pred, "auc")
-    nbauc = unlist(slot(nbauc, "y.values"))
-    aucs[type.id] = nbauc
-    print(paste("AUC for",lvls[type.id],"=",round(nbauc,3)))
-    
-    auc_tot <<- nbauc+auc_tot
-    auc_num <<- auc_num+1
-  }
-}
-
-lines(x=c(0,1), c(0,1))
-
-print(paste("Average AUC for all prediction classes: ", round(auc_tot/auc_num,3)))
-# mean(aucs) # AUC. calculate each individually. 
-# rm(auc_num)
-# rm(auc_tot)
-#
-#####
-# MODEL FITTING - BALANCED TRAINING DATA
-#####
-
-#####
 # Resample data from training data with balanced response variable classes
-#####
 set.seed(465)
 train=(sample(1:nrow(forest.cover.data),nrow(forest.cover.data)*0.70)) # 70% train / 30% test split
 plot(forest.cover.data[train,"Cover_Type_Factor"],main="unbalanced training data") # examine data
@@ -1811,10 +2475,7 @@ rm(x1)
 plot(forest.cover.data[train_balanced,"Cover_Type_Factor"],main="balanced training data") # examine data
 table(forest.cover.data[train_balanced,"Cover_Type_Factor"]) # examine data
 
-#####
 # Fit NN model on balanced training data
-#####
-# fit NN
 set.seed(465)
 fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train_balanced,], 
                repeats=10, 
@@ -1834,40 +2495,8 @@ round(prop.table(Table2),3) # confusion table with percentages
 confusionMatrix(Table2)
 round(multiclass_metrics(Table2),4)
 
-
 #####
-# PCA ANALYSIS & Model fitting on  PCA variables (balanced data)
-#####
-temp1 <- select(forest.cover.data,-Cover_Type_Factor) # temp data set for PCA without response variable
-temp1_pca = prcomp(temp1[train_balanced,]) # create PCA object
-
-pcaCharts <- function(x) {
-  x.var <- x$sdev ^ 2
-  x.pvar <- x.var/sum(x.var)
-  #print("proportions of variance:")
-  #print(x.pvar)
-  
-  par(mfrow=c(1,2))
-  plot(x.pvar,xlab="Principal component", ylab="Proportion of variance explained", ylim=c(0,1), type='b')
-  plot(cumsum(x.pvar),xlab="Principal component", ylab="Cumulative Proportion of variance explained", ylim=c(0,1), type='b')
-  #screeplot(x)
-  #screeplot(x,type="l")
-  par(mfrow=c(1,1))
-} # UDF for PCA plots (scree, cumulative variance)
-pcaCharts(temp1_pca)
-#screeplot(temp1_pca, type="lines",length(temp1_pca$sdev),main="scree plot")
-#biplot(temp1_pca,scale=0, cex=.7)
-
-temp1 <- predict(temp1_pca,temp1) # project PCA rotation onto all data.
-temp1 <-as.data.frame(temp1)
-temp1 <- cbind(temp1,forest.cover.data$Cover_Type_Factor)
-colnames(temp1)[colnames(temp1) == 'forest.cover.data$Cover_Type_Factor'] <- 'Cover_Type_Factor'
-backup <- forest.cover.data
-forest.cover.data<-temp1
-rm(temp1)
-
-#####
-# Fit NN model on PCA (balanced data)
+# MODEL 25
 #####
 # fit NN
 set.seed(465)
@@ -1877,12 +2506,11 @@ fit  <- avNNet(Cover_Type_Factor~PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8+PC9+PC10+PC11+P
                  PC61+PC62+PC63+PC64+PC65+PC66+PC67+PC68+PC69+PC70+PC71+PC72+PC73+PC74+PC75+PC76+PC77+PC78+PC79+PC80+
                  PC81+PC82+PC83+PC84+PC85+PC86+PC87+PC88+PC89+PC90+PC91+PC92+PC93+PC94+PC95+PC96+PC97+PC98+PC99+PC100+
                  PC101+PC102+PC103+PC104+PC105+PC106+PC107+PC108+PC109+PC110+PC111+PC112+PC113+PC114+PC115+PC116+PC117+PC118+PC119+PC120+
-                 PC121+PC122+PC123+PC124+PC125
-               ,
+                 PC121+PC122+PC123+PC124+PC125,
                data=forest.cover.data[train_balanced,], 
-               repeats=5, 
-               size=4, 
-               decay=0.10,
+               repeats=10, 
+               size=7, #12 
+               decay=0.50,
                bag=FALSE,
                linout=TRUE)
 pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
@@ -1893,31 +2521,242 @@ a <- as.factor(nn.pred)
 b <- forest.cover.data[-train,"Cover_Type_Factor"]
 l <- union(a, b)
 Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
 confusionMatrix(Table2)
-
+round(multiclass_metrics(Table2),4)
 
 #####
-# ENSEMBLE PREDICTIONS
+# MODEL 26
 #####
+# fit NN
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~
+                 PC3398+PC44+PC64+PC47+PC3384+PC3385+PC68+PC63+PC18+PC7+PC20+PC62+PC3485+PC3162+PC2913+PC2456+PC69+
+                 PC48+PC2492+PC57+PC3393+PC2714+PC2563+PC3089+PC2455+PC3137+PC2591+PC1897+PC2921+PC103+PC1757+PC1728+
+                 PC1914+PC80+PC1682+PC71+PC2439+PC2147+PC2171+PC2722+PC2557+PC2398+PC1936+PC2476+PC2272+PC3019+PC1725+
+                 PC2118+PC1680+PC1744+PC1678+PC1617+PC1715+PC1714+PC2121+PC2770+PC1733+PC3398+PC2381+PC2459+PC2805+
+                 PC6+PC2437+PC2812+PC2908+PC3068+PC2727+PC2675+PC3085+PC3044+PC3164+PC2077+PC2142+PC1734+PC90+PC2129+
+                 PC1632+PC111+PC89+PC2064+PC1764+PC1691+PC157+PC2954+PC2700+PC2992+PC1672+PC2969+PC2899+PC1994+PC2253+
+                 PC1677+PC1954+PC2889+PC2245+PC2099+PC2970+PC2901+PC1941+PC2991+PC2134+PC2728+PC220+PC3004+PC79+PC49+
+                 PC107+PC2570+PC2898+PC2520+PC82+PC160+PC3177+PC2308+PC321+PC677+PC26+PC1413+PC3372+PC52+PC37+PC141+
+                 PC39+PC3036+PC2024+PC1811+PC2605+PC2412+PC3188+PC2667+PC2879+PC1625+PC2186+PC1942+PC1624+PC2442+PC3032+
+                 PC1801+PC2713+PC2205+PC2175+PC2648+PC1837+PC3222+PC22+PC1836+PC3276+PC2320+PC1622+PC2934+PC75+PC3422+
+                 PC2037+PC3404+PC60+PC25+PC2724+PC65+PC2823+PC3402+PC13+PC2696+PC58+PC2467+PC2588+PC3179+PC2395+PC95+
+                 PC2842+PC3291+PC51
+               ,
+               data=forest.cover.data[train_balanced,], 
+               repeats=10, 
+               size=5, #12,
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
 
-# ensemble = c() # create a list of predictions to be used for ensembling
-# 
-# #ensemble[[X]] = pred2 # Note: must attach this code to end of each avNNet() model. Add X+1 for each model.
-# #####
-# # Ensemble Predictions
-# #####
-# 
-# # Sum predictions from each model together
-# ensemble.pred.probs = ensemble[[1]] + ensemble[[2]] + ensemble[[3]] + ensemble[[4]] + ensemble[[5]] + ensemble[[6]]
-# ensemble.pred <- colnames(ensemble.pred.probs)[max.col(ensemble.pred.probs,ties.method="first")] # choose the highest percentage item.
-# 
-# a <- as.factor(ensemble.pred)
-# b <- wine[,"Grower"]
-# l <- union(a, b)
-# Table2 <- table(factor(a, l), factor(b, l))
-# round(prop.table(Table2),3) # confusion table with percentages
-# confusionMatrix(Table2) #confusion matrix
-# round(multiclass_metrics(Table2),4)
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+
+#####
+# MODEL 27
+#####
+ensemble = c() # create a list of predictions to be used for ensembling
+
+# MODEL 17
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train,], 
+               repeats=10, 
+               size=12, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+ensemble[[1]] = pred2 # attach to end of each avNNet() model
+
+# MODEL 22
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8+PC9+PC10+PC11+PC12+PC13+PC14+PC15+PC16+PC17+PC18+PC19+PC20+
+                 PC21+PC22+PC23+PC24+PC25+PC26+PC27+PC28+PC29+PC30+PC31+PC32+PC33+PC34+PC35+PC36+PC37+PC38+PC39+PC40+
+                 PC41+PC42+PC43+PC44+PC45+PC46+PC47+PC48+PC49+PC50+PC51+PC52+PC53+PC54+PC55+PC56+PC57+PC58+PC59+PC60+
+                 PC61+PC62+PC63+PC64+PC65+PC66+PC67+PC68+PC69+PC70+PC71+PC72+PC73+PC74+PC75+PC76+PC77+PC78+PC79+PC80+
+                 PC81+PC82+PC83+PC84+PC85+PC86+PC87+PC88+PC89+PC90+PC91+PC92+PC93+PC94+PC95+PC96+PC97+PC98+PC99+PC100+
+                 PC101+PC102+PC103+PC104+PC105+PC106+PC107+PC108+PC109+PC110+PC111+PC112+PC113+PC114+PC115+PC116+PC117+PC118+PC119+PC120+
+                 PC121+PC122+PC123+PC124+PC125,
+               data=forest.cover.data[train,], 
+               repeats=10, 
+               size=7, #12 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+ensemble[[2]] = pred2 # attach to end of each avNNet() model
+
+# MODEL 23
+# fit NN
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~
+                 PC3398+PC44+PC64+PC47+PC3384+PC3385+PC68+PC63+PC18+PC7+PC20+PC62+PC3485+PC3162+PC2913+PC2456+PC69+
+                 PC48+PC2492+PC57+PC3393+PC2714+PC2563+PC3089+PC2455+PC3137+PC2591+PC1897+PC2921+PC103+PC1757+PC1728+
+                 PC1914+PC80+PC1682+PC71+PC2439+PC2147+PC2171+PC2722+PC2557+PC2398+PC1936+PC2476+PC2272+PC3019+PC1725+
+                 PC2118+PC1680+PC1744+PC1678+PC1617+PC1715+PC1714+PC2121+PC2770+PC1733+PC3398+PC2381+PC2459+PC2805+
+                 PC6+PC2437+PC2812+PC2908+PC3068+PC2727+PC2675+PC3085+PC3044+PC3164+PC2077+PC2142+PC1734+PC90+PC2129+
+                 PC1632+PC111+PC89+PC2064+PC1764+PC1691+PC157+PC2954+PC2700+PC2992+PC1672+PC2969+PC2899+PC1994+PC2253+
+                 PC1677+PC1954+PC2889+PC2245+PC2099+PC2970+PC2901+PC1941+PC2991+PC2134+PC2728+PC220+PC3004+PC79+PC49+
+                 PC107+PC2570+PC2898+PC2520+PC82+PC160+PC3177+PC2308+PC321+PC677+PC26+PC1413+PC3372+PC52+PC37+PC141+
+                 PC39+PC3036+PC2024+PC1811+PC2605+PC2412+PC3188+PC2667+PC2879+PC1625+PC2186+PC1942+PC1624+PC2442+PC3032+
+                 PC1801+PC2713+PC2205+PC2175+PC2648+PC1837+PC3222+PC22+PC1836+PC3276+PC2320+PC1622+PC2934+PC75+PC3422+
+                 PC2037+PC3404+PC60+PC25+PC2724+PC65+PC2823+PC3402+PC13+PC2696+PC58+PC2467+PC2588+PC3179+PC2395+PC95+
+                 PC2842+PC3291+PC51
+               ,
+               data=forest.cover.data[train,], 
+               repeats=10, 
+               size=5, #12,
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+ensemble[[3]] = pred2 # attach to end of each avNNet() model
+
+# MODEL 24
+
+# user will need to reload forest_cover data set to access "Cover_Type_XX" variables.
+# entire code is not repasted for sake of parsimony. 
+
+# Fit NN model on balanced training data
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~., data=forest.cover.data[train_balanced,], 
+               repeats=10, 
+               size=12, 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+ensemble[[4]] = pred2 # attach to end of each avNNet() model
+
+
+# MODEL 25
+# fit NN
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8+PC9+PC10+PC11+PC12+PC13+PC14+PC15+PC16+PC17+PC18+PC19+PC20+
+                 PC21+PC22+PC23+PC24+PC25+PC26+PC27+PC28+PC29+PC30+PC31+PC32+PC33+PC34+PC35+PC36+PC37+PC38+PC39+PC40+
+                 PC41+PC42+PC43+PC44+PC45+PC46+PC47+PC48+PC49+PC50+PC51+PC52+PC53+PC54+PC55+PC56+PC57+PC58+PC59+PC60+
+                 PC61+PC62+PC63+PC64+PC65+PC66+PC67+PC68+PC69+PC70+PC71+PC72+PC73+PC74+PC75+PC76+PC77+PC78+PC79+PC80+
+                 PC81+PC82+PC83+PC84+PC85+PC86+PC87+PC88+PC89+PC90+PC91+PC92+PC93+PC94+PC95+PC96+PC97+PC98+PC99+PC100+
+                 PC101+PC102+PC103+PC104+PC105+PC106+PC107+PC108+PC109+PC110+PC111+PC112+PC113+PC114+PC115+PC116+PC117+PC118+PC119+PC120+
+                 PC121+PC122+PC123+PC124+PC125,
+               data=forest.cover.data[train_balanced,], 
+               repeats=10, 
+               size=7, #12 
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+ensemble[[5]] = pred2 # attach to end of each avNNet() model
+
+# MODEL 26
+# fit NN
+set.seed(465)
+fit  <- avNNet(Cover_Type_Factor~
+                 PC3398+PC44+PC64+PC47+PC3384+PC3385+PC68+PC63+PC18+PC7+PC20+PC62+PC3485+PC3162+PC2913+PC2456+PC69+
+                 PC48+PC2492+PC57+PC3393+PC2714+PC2563+PC3089+PC2455+PC3137+PC2591+PC1897+PC2921+PC103+PC1757+PC1728+
+                 PC1914+PC80+PC1682+PC71+PC2439+PC2147+PC2171+PC2722+PC2557+PC2398+PC1936+PC2476+PC2272+PC3019+PC1725+
+                 PC2118+PC1680+PC1744+PC1678+PC1617+PC1715+PC1714+PC2121+PC2770+PC1733+PC3398+PC2381+PC2459+PC2805+
+                 PC6+PC2437+PC2812+PC2908+PC3068+PC2727+PC2675+PC3085+PC3044+PC3164+PC2077+PC2142+PC1734+PC90+PC2129+
+                 PC1632+PC111+PC89+PC2064+PC1764+PC1691+PC157+PC2954+PC2700+PC2992+PC1672+PC2969+PC2899+PC1994+PC2253+
+                 PC1677+PC1954+PC2889+PC2245+PC2099+PC2970+PC2901+PC1941+PC2991+PC2134+PC2728+PC220+PC3004+PC79+PC49+
+                 PC107+PC2570+PC2898+PC2520+PC82+PC160+PC3177+PC2308+PC321+PC677+PC26+PC1413+PC3372+PC52+PC37+PC141+
+                 PC39+PC3036+PC2024+PC1811+PC2605+PC2412+PC3188+PC2667+PC2879+PC1625+PC2186+PC1942+PC1624+PC2442+PC3032+
+                 PC1801+PC2713+PC2205+PC2175+PC2648+PC1837+PC3222+PC22+PC1836+PC3276+PC2320+PC1622+PC2934+PC75+PC3422+
+                 PC2037+PC3404+PC60+PC25+PC2724+PC65+PC2823+PC3402+PC13+PC2696+PC58+PC2467+PC2588+PC3179+PC2395+PC95+
+                 PC2842+PC3291+PC51
+               ,
+               data=forest.cover.data[train_balanced,], 
+               repeats=10, 
+               size=5, #12,
+               decay=0.50,
+               bag=FALSE,
+               linout=TRUE)
+pred2 <-predict(fit, forest.cover.data[-train,]) # predictions on test data.
+pred2 <- as.data.frame(pred2) # pred predicts percentage likelihood for each factor
+nn.pred <- colnames(pred2)[max.col(pred2,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(nn.pred)
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2)
+round(multiclass_metrics(Table2),4)
+ensemble[[6]] = pred2 # attach to end of each avNNet() model
+
+## Ensemble Predictions
+
+# Sum predictions from each model together
+ensemble.pred.probs = ensemble[[1]] + ensemble[[2]] + ensemble[[3]] + ensemble[[4]] + ensemble[[5]] + ensemble[[6]]
+ensemble.pred <- colnames(ensemble.pred.probs)[max.col(ensemble.pred.probs,ties.method="first")] # choose the highest percentage item.
+
+a <- as.factor(ensemble.pred)
+b <- wine[,"Grower"]
+l <- union(a, b)
+Table2 <- table(factor(a, l), factor(b, l))
+round(prop.table(Table2),3) # confusion table with percentages
+confusionMatrix(Table2) #confusion matrix
+round(multiclass_metrics(Table2),4)
 
 ############################
 # END NEURAL NET MODEL SECTION
