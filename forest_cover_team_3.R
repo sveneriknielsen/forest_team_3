@@ -2751,7 +2751,7 @@ ensemble.pred.probs = ensemble[[1]] + ensemble[[2]] + ensemble[[3]] + ensemble[[
 ensemble.pred <- colnames(ensemble.pred.probs)[max.col(ensemble.pred.probs,ties.method="first")] # choose the highest percentage item.
 
 a <- as.factor(ensemble.pred)
-b <- wine[,"Grower"]
+b <- forest.cover.data[-train,"Cover_Type_Factor"]
 l <- union(a, b)
 Table2 <- table(factor(a, l), factor(b, l))
 round(prop.table(Table2),3) # confusion table with percentages
